@@ -22,4 +22,8 @@ gulp.task("watch", function() {
   ], ["webpack"]);
 });
 
+gulp.doneCallback = function (err) {
+  process.exit(err ? 1 : 0);
+};
+
 gulp.task("default", ["webpack", "watch"]);
