@@ -9,7 +9,8 @@ module ObservationsHelper
     return nil if !url
     # this assumes you're not using SSL *and* locally hosted attachments for observations
     if params[:ssl] || ( defined? request && request && request.protocol =~ /https/ )
-      url = url.sub("http://", "https://s3.amazonaws.com/")
+      # url = url.sub("http://", "https://s3.amazonaws.com/")
+      url = url.sub("http://", "http://")
     end
     url
   end

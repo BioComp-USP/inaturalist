@@ -48,4 +48,4 @@ RUN bundle exec gem uninstall rgeo -a -I
 
 RUN bundle install
 
-USER inat
+# USER inat
