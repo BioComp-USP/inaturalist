@@ -11,8 +11,5 @@ rake db:setup
 echo "LOAD SOURCES"
 rails r tools/load_sources.rb
 
-echo "LOAD ICONIC TAXA"
-rails r tools/load_iconic_taxa.rb
-
 echo "CREATE SITE"
 rails r "Site.create( name: 'iNaturalist' )"

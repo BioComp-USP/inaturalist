@@ -1,10 +1,4 @@
 #!/bin/sh
-# echo "ELASTICSEARCH START"
-# bundle exec rake es:start
-
-# echo "ELASTICSEARCH REBUILD"
-# bundle exec rake es:rebuild
-
 echo "START DELAYED JOB"
 ./script/delayed_job start
 
