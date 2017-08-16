@@ -10,7 +10,7 @@ RUN update-alternatives --install /usr/bin/java java /opt/java/jdk1.8.0_131/bin/
     update-alternatives --set jar /opt/java/jdk1.8.0_131/bin/jar && \
     update-alternatives --set javac /opt/java/jdk1.8.0_131/bin/javac
 
-ENV JAVA_HOME="/opt/java/jdk1.8.0_131" LANG="C.UTF-8" APP_HOME="/home/inat/inaturalist/"
+ENV JAVA_HOME="/opt/java/jdk1.8.0_131" LANG="C.UTF-8" APP_HOME="/home/inat/web/"
 
 RUN apt-get update -qq && apt-get install -y ruby-full ruby-execjs postgresql-client gdal-bin proj-bin libgeos-dev libgeos++-dev libproj-dev wkhtmltopdf nano
 
