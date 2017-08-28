@@ -17,6 +17,8 @@ Rails.application.routes.draw do
   get "/privacy", to: redirect( "/pages/privacy" )
   get "/users/new.mobile", to: redirect( "/signup" )
 
+  get "pages/:page" => "page#show"
+
   resources :controlled_terms
   resources :controlled_term_labels, only: [:create, :update, :destroy]
   resources :controlled_term_values, only: [:create, :destroy]

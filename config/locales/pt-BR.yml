@@ -1065,7 +1065,7 @@ pt-BR:
     cor, estado de conservação, ou buscando da maneira comum.
   edit: Alterar
   edit_a_batch_of_observations: Editar um grupo de observações
-  edit_account_settings_and_profile: Edite as configurações da conta &amp; perfil
+  edit_account_settings_and_profile: Edite as configurações da conta e perfil
   edit_assessment: Editar avaliação
   edit_body: Editar copro
   edit_colors: Editar cores
@@ -1341,6 +1341,7 @@ pt-BR:
   get_started_raquo: Comece &raquo;
   get_started: Começar
   getting_started: Primeiros passos
+  getting_started_guide: Guia de Introdução
   give_it_some_detail: Inclua alguns detalhes!
   global_conservation_status: Estado de conservação global
   global_names: Nomes globais
@@ -1407,6 +1408,7 @@ pt-BR:
   hide: Ocultar
   hide_details: Ocultar detalhes
   highest_rank: Categoria mais alta
+  history: História
   home: Início
   home_faq: Perguntas frequentes
   however_there_were_some_issues: 'Entretanto, existiram alguns problemas: %{issues}'
@@ -1432,6 +1434,7 @@ pt-BR:
   identifications: Identificações
   identifications_by: Identificações por %{user}
   identified?: identificado
+  identifiers: Identificadores
   identotron: Auto-Identificador
   identotron_for: Auto-Identificador para
   identotron_help: Ajuda do Auto-Identificador
@@ -1579,6 +1582,7 @@ pt-BR:
   kml_file_size_error: KML deve ter menos que 1 MB de tamanho
   labels: Etiquetas
   label_to_group_a_batch_of_taxon_changes: Etiqueta para agrupar mudanças em espécies
+  language_slash_type: Idioma / Tipo
   large: grande
   last_confirmed_observation: Última observação confirmada
   last_inat_observation: Última observação %{site_name}
@@ -1607,6 +1611,7 @@ pt-BR:
   legacy_authentication_notice_html: Parece que você está utilizando uma senha da
     versão antiga deste site. Por favor lembre-se de <a href="%{url}">mudar sua senha</a>
     para a nova versão.
+  let_us_walk_you_through: Deixe-nos te apresentar as principais características deste site.
   lexicon: Lexicon
   lexicons:
     scientific_names: Nomes Científicos
@@ -1828,6 +1833,7 @@ pt-BR:
     informativos.
   manually_create_new_place: Crie um novo lugar manualmente
   map: Mapa
+  map_legend: Legenda do mapa
   maps:
     overlays:
       all_observations: Todas as observações
@@ -1975,6 +1981,13 @@ pt-BR:
   no_flags: Nenhum alerta desta vez
   no_flickr_photos_tagged: Nenhuma foto do Flickr marcada!
   no_header_row: Não existe cabeçalho
+  no_identifications: Não há identificações
+  no_identifications_added:
+    current_user: Você não adicionou identificações às observações de ninguém.
+    user: "%{user} não adicionou identificações às observações de ninguém."
+  no_favorites_added:
+    current_user: Você ainda não adicionou favoritos.
+    user: "%{user} não adicionou favoritos."
   no_journal_post_have_been: Nenhuma notícia do boletim informativo foi adicionada
     neste projeto ainda.
   no_license_all_rights_reserved: Sem licenças (todos os direitos reservados)
@@ -2025,6 +2038,7 @@ pt-BR:
   no_sections_have_been_added_to_this_assessments_yet: Nenhuma seção foi adicionada
     nestas avaliações ainda.
   no_species_have_been_listed: Nenhuma espécie foi listada para este lugar ainda!
+  no_species_observed: Nenhuma espécie observada
   no_species_on_this_list: Ainda não existem espécies nesta lista!
   no_species_on_this_list_for_owner_html: |-
     Você pode começar a adicionar espécies diretamente nesta lista, ou se esta for uma lista de vida, ela será atualizada automaticamente com as espécies quando você
@@ -2167,7 +2181,8 @@ pt-BR:
   observed_in_place?: observado no local
   observed_on: Observado em
   observed_one: observado um(a)
-  observer: Obsservador
+  observer: Observador
+  observers: Observadores
   observer_short: Observador
   observing: observando
   occurence_status_describes_how: Status de ocorrência descreve o quanto comum ou
@@ -2448,6 +2463,7 @@ pt-BR:
     united_states: Estados Unidos
     virgin_islands: Ilhas Virgens
     west_africa: África Ocidental
+  places_of_interest: Lugares de interesse
   places_merged_successfully: Lugares combinados com sucesso!
   plants: plantas
   please_add_a_citation_for_this_change: Por favor adicione uma referência para esta
@@ -2585,6 +2601,7 @@ pt-BR:
   read_our_getting_started_guide: ler ou Acessar o guia de uso
   read_the_full_wikipedia: Leia a descrição da Wikipédia completa
   ready_to_get_started?: Pronto para começar?
+  real_time_discussions: Discussões em Tempo Real
   reason: Razão
   reason_you_are_flagging_this_item: Motivo pelo qual está marcando com alerta este
     item.
@@ -2753,6 +2770,7 @@ pt-BR:
   search_ubio_raquo: Buscar em uBio &raquo;
   search_your_photos: Pesquisar suas fotos
   searching: Buscando...
+  seasonality: Sazonalidade
   second_person_possessive_singular: Sua %{noun}
   second_person_possessive_singular_: Sua %{noun}
   see_something_wrong_with_taxon: Você visualizou algo errado com este táxon? Avise
@@ -2981,6 +2999,8 @@ pt-BR:
   submit: Enviar
   submit_comment: Enviar comentário
   submitted: Enviado
+  subscribe_to_a_taxon: Assinar um Táxon
+  subscribe_to_a_place: Assinar um Lugar
   subscribe_to_places_to: Registre-se para receber atualizações específicas para novos
     registros em determinados locais. Atualizações incluídas por membros que você
     segue assim como seus comentários também dependem de inscrição, caso você queira
@@ -3027,6 +3047,7 @@ pt-BR:
   taxa_observed: táxons observados
   taxa_to_include: Táxons a incluir
   taxon: Táxon
+  taxonomy: Taxonomia
   taxon_: táxon
   taxon_assessments_are: "Arquivos de avaliação de táxon são documentos conectados
     diretamente dados como por exemplo o status de conservação de uma espécie. \nPor
@@ -3044,6 +3065,7 @@ pt-BR:
       se houverem registros GBIF.
     data_url: Dados de URL
     overlays: Capas
+  taxon_changes: Alterações do Táxon
   taxon_change_settings: Configuração de alterações no táxon
   taxon_merge: Fundir táxon
   taxon_name: Nome de táxon
@@ -3051,6 +3073,7 @@ pt-BR:
   taxon_range: Distribuição do táxon
   taxon_removed_from_list: Táxon excluído da lista
   taxon_scheme: Esquema de taxonomía
+  taxon_schemes: "Esquemas de Taxonomia"
   taxon_schemes_raquo_html: Esquemas <nobr>taxonômicos »</nobr>
   taxon_search: Busca por táxon
   taxon_search_results_for: Resultados da busca por táxon
@@ -3291,6 +3314,11 @@ pt-BR:
   tools: Ferramentas
   top_5_identifiers: Top 5 naturalistas
   top_contributors: Principais colaboradores
+  top_identifier: Principal identificador
+  top_identifiers: Principais identificadores
+  top_identifiers_of_taxon: Principais identificador de %{taxon}
+  top_observer: Principal observador
+  top_species: Principal espécie
   total: total
   total_members: Total de membros
   total_observations: Total de observações
@@ -3300,6 +3328,7 @@ pt-BR:
   trusted_project?: É um projeto confiável?
   try_adding_species_form: Tente adicionar alguma espécie usando o formulário desta
     página.
+  try_it_out: Experimente
   try_wikipedia: Deseja tentar com Wikipédia?
   tue: Ter
   twitter: Twitter
@@ -3507,6 +3536,7 @@ pt-BR:
   want_to_add_one: Deseja adicionar uma?
   want_to_show_off_some_of_your_favorite_taxa: Deseja mostrar alguns dos seus táxons
     favoritos aqui?
+  want_to_test_a_new_version_of_this_page: Deseja testar uma nova versão desta página?
   was_it_captive_cultivated?: Era cultivada / mantida em cativeiro?
   we_can_only_understand_csv_in: Só podemos entender CSV no seguinte formato
   we_care_privacy: Nos importamos com sua privacidade!
@@ -3733,6 +3763,7 @@ pt-BR:
   your_activation_code_was_missing: Seu código de ativação está faltando. Por favor
     siga o endereço de URL que está no seu e-mail.
   your_comment_was_saved: Seu conteúdo está salvo.
+  your_content: Seu Conteúdo
   your_default: seu padrão
   your_default_time_zone: Seu fuso horário padrão
   your_drafts: Seus Rascunhos
@@ -4434,6 +4465,10 @@ pt-BR:
         sorry_that_doesnt_exist: Desculpe, isto não existe!
         even_our_dedicated_search_mole_couldnt: Mesmo nosso dedicado tatu curioso
           não encontrou nada!
+    taxa:
+      show:
+        trending_desc: Os taxa mais observados no último mês
+        rare_desc: Táxons ameaçados menos observados
     taxon_names:
       form:
         new_name_guidelines_html: |-
@@ -4499,6 +4534,7 @@ pt-BR:
           o que você vê na natureza, \n<strong>encontre</strong> outras pessoas que
           adoram a natureza, \ne <strong>aprenda</strong> mais sobre o mundo natural."
         connect_with_nature: Conecte-se com a Natureza
+        explore_and_share: Explore e compartilhe suas observações da natureza.
         observations_to_date: Observações até agora
         contribute_to_science: Contribuir para a Ciência
     wiki_pages:
