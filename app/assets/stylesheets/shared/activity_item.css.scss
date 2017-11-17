@@ -10,7 +10,8 @@ body > div > [role="dialog"] .ActivityItem {
     float: right;
   }
   .taxon {
-    display: inline-block;
+    display: flex;
+    overflow: hidden;
   }
   .taxon-image {
     width: 44px;
@@ -23,16 +24,37 @@ body > div > [role="dialog"] .ActivityItem {
   }
   span.taxon {
     display: inline-block;
-  }
-  a.display-name {
-    color: #000;
-    font-size: 20px;
-    display: block;
-    line-height: 24px;
-  }
-  a.sciname {
-    color: #000;
-    font-size: 14px;
+    a.sciname {
+      color: #000;
+      font-size: 14px;
+      line-height: 16px;
+    }
+    & > a.display-name {
+      color: #000;
+      font-size: 20px;
+      display: block;
+      line-height: 25px;
+    }
+    &.has-com-name .member-group:before {
+      content: " - ";
+    }
+    .member-group {
+      display: inline;
+      font-style: normal;
+      .sciname {
+        font-style: normal;
+      }
+      .taxon {
+        display: inline;
+      }
+      a.display-name {
+        color: #000;
+        font-size: 14px;
+        font-weight: normal;
+        display: inline;
+        line-height: 14px;
+      }
+    }
   }
   .time {
     float: right;
@@ -74,6 +96,7 @@ body > div > [role="dialog"] .ActivityItem {
   }
   .panel-body {
     padding: 0px;
+    line-height: 1;
     .taxon-change {
       padding: 7px 15px;
       background: #FCF8E3;
@@ -84,6 +107,17 @@ body > div > [role="dialog"] .ActivityItem {
     }
     .contents {
       padding: 15px;
+      line-height: 1;
+      .content {
+        display: block;
+        overflow: hidden;
+      }
+      .UserText {
+        line-height: 20px;
+        img {
+          max-width: 100%;
+        }
+      }
     }
   }
   .icon {
@@ -105,8 +139,11 @@ body > div > [role="dialog"] .ActivityItem {
     line-height: 36px;
   }
   i.taxon-image.icon {
-    font-size: 44px;
+    font-size: 36px;
+    line-height: 38px;
     opacity: 0.9;
+    text-align: center;
+    padding-left: 1px
   }
   .panel {
     margin-left: 60px;

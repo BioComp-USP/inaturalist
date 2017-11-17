@@ -5,6 +5,7 @@ class Identification < ActiveRecord::Base
                     comment_type: "item-description",
                     automated: false
 
+  blockable_by lambda {|identification| identification.observation.try(:user_id) }
   belongs_to :observation
   belongs_to :user
   belongs_to :taxon
@@ -15,6 +16,7 @@ class Identification < ActiveRecord::Base
   validates_presence_of :taxon, 
                         :message => "for an ID must be something we recognize"
   
+  before_create :replace_inactive_taxon
   before_save :update_other_identifications,
               :set_previous_observation_taxon
   after_create :update_observation,
@@ -25,7 +27,8 @@ class Identification < ActiveRecord::Base
   after_update :update_obs_stats, 
                :update_curator_identification,
                :update_quality_metrics
-  after_commit :update_categories,
+  after_commit :skip_observation_indexing,
+                 :update_categories,
                  :update_observation,
                  :update_user_counter_cache,
                unless: Proc.new { |i| i.observation.destroyed? }
@@ -123,6 +126,13 @@ class Identification < ActiveRecord::Base
   end
   
   # Callbacks ###############################################################
+
+  def replace_inactive_taxon
+    return true if taxon && taxon.is_active?
+    return true unless candidate = taxon.current_synonymous_taxon
+    self.taxon = candidate
+    true
+  end
 
   def update_other_identifications
     return true unless ( current_changed? || new_record? ) && current?
@@ -329,7 +339,6 @@ class Identification < ActiveRecord::Base
       idents = o.identifications
     else
       idents = Identification.
-        select( "id, taxon_id, current" ).
         includes(:taxon).
         where( observation_id: o.id )
     end
@@ -361,11 +370,23 @@ class Identification < ActiveRecord::Base
       next if idents.compact.blank?
       Identification.where( id: idents.map(&:id) ).update_all( category: category )
     end
+    Identification.elastic_index!( ids: idents.map(&:id) )
+    o.reload
+    o.elastic_index!
   end
 
   def update_categories
     return true if skip_observation
     Identification.update_categories_for_observation( observation )
+    true
+  end
+
+  # Should only run after commit and should be the final thing to run before
+  # commit. If the observation attached to this instance is dirty for some
+  # reason, ignore those changes b/c they've probably already been set in the
+  # database in an obs callback
+  def skip_observation_indexing
+    observation.skip_indexing = true
     true
   end
 
@@ -380,6 +401,14 @@ class Identification < ActiveRecord::Base
 
   def vision=( val )
     self.preferred_vision = val.yesish?
+  end
+
+  def taxon_name
+    taxon.try(:name)
+  end
+
+  def taxon_rank
+    taxon.try(:rank)
   end
 
   # Static ##################################################################

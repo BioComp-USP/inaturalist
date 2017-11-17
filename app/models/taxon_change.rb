@@ -275,6 +275,10 @@ class TaxonChange < ActiveRecord::Base
       logger.info "[INFO #{Time.now}] Reverting taxon links: #{taxon_link_sql}"
       ActiveRecord::Base.connection.execute(taxon_link_sql) unless debug
     end
+    input_taxa.each do |input_taxon|
+      input_taxon.update_attributes( is_active: true )
+    end
+    # output taxa may or may not need to be made inactive, impossible to say in code
     logger.info "[INFO #{Time.now}] Finished partial revert for #{self}"
   end
 
@@ -316,6 +320,12 @@ class TaxonChange < ActiveRecord::Base
     end
     if target_input_taxon.rank_level <= Taxon::GENUS_LEVEL && output_taxon.rank == target_input_taxon.rank
       target_input_taxon.children.active.each do |child|
+        # If for some horrible reason people are swapping replacing taxa with
+        # their own children, at least don't get into some kind of invite
+        # change loop.
+        if input_taxa.include?( child ) || output_taxa.include?( child )
+          next
+        end
         tc = TaxonSwap.new(
           user: user,
           change_group: (change_group || "#{self.class.name}-#{id}-children"),

@@ -41,7 +41,7 @@ class Observation < ActiveRecord::Base
   # lists after saving.  Useful if you're saving many observations at once and
   # you want to update lists in a batch
   attr_accessor :skip_refresh_lists, :skip_refresh_check_lists, :skip_identifications,
-    :bulk_import, :skip_indexing
+    :bulk_import, :skip_indexing, :editing_user_id, :skip_quality_metrics
   
   # Set if you need to set the taxon from a name separate from the species 
   # guess
@@ -57,6 +57,8 @@ class Observation < ActiveRecord::Base
   attr_accessor :geo_y
 
   attr_accessor :owners_identification_from_vision_requested
+  attr_accessor :localize_locale
+  attr_accessor :localize_place
   
   def captive_flag
     @captive_flag ||= !quality_metrics.detect{|qm| 
@@ -232,7 +234,7 @@ class Observation < ActiveRecord::Base
 
   preference :community_taxon, :boolean, :default => nil
   
-  belongs_to :user, :counter_cache => true
+  belongs_to :user
   belongs_to :taxon
   belongs_to :community_taxon, :class_name => 'Taxon'
   belongs_to :iconic_taxon, :class_name => 'Taxon', 
@@ -325,6 +327,7 @@ class Observation < ActiveRecord::Base
                     :set_time_in_time_zone,
                     :set_coordinates
 
+  before_create :replace_inactive_taxon
   before_save :strip_species_guess,
               :set_taxon_from_species_guess,
               :set_taxon_from_taxon_name,
@@ -359,9 +362,13 @@ class Observation < ActiveRecord::Base
              :update_observations_places,
              :set_taxon_photo,
              :create_observation_review
-  after_create :set_uri
+  after_create :set_uri, :update_user_counter_caches
   before_destroy :keep_old_taxon_id
-  after_destroy :refresh_lists_after_destroy, :refresh_check_lists, :update_taxon_counter_caches, :create_deleted_observation
+  after_destroy :refresh_lists_after_destroy, :refresh_check_lists,
+    :update_taxon_counter_caches, :create_deleted_observation,
+    :update_user_counter_caches
+
+  after_commit :reindex_identifications
   
   ##
   # Named scopes
@@ -988,6 +995,7 @@ class Observation < ActiveRecord::Base
   # specified
   def observation_field_values_attributes=(attributes)
     attr_array = attributes.is_a?(Hash) ? attributes.values : attributes
+    return unless attr_array
     attr_array.each_with_index do |v,i|
       if v["id"].blank?
         existing = observation_field_values.where(:observation_field_id => v["observation_field_id"]).first unless v["observation_field_id"].blank?
@@ -1095,6 +1103,13 @@ class Observation < ActiveRecord::Base
     true
   end
 
+  def replace_inactive_taxon
+    return true if taxon.blank? || ( taxon && taxon.is_active? )
+    return true unless candidate = taxon.current_synonymous_taxon
+    self.taxon = candidate
+    true
+  end
+
   #
   # Trim whitespace around species guess
   #
@@ -1139,11 +1154,7 @@ class Observation < ActiveRecord::Base
   def set_captive
     update_column(:captive, captive_cultivated)
   end
-  
-  def lsid
-    "lsid:#{URI.parse(CONFIG.site_url).host}:observations:#{id}"
-  end
-  
+
   def component_cache_key(options = {})
     Observation.component_cache_key(id, options)
   end
@@ -1174,7 +1185,7 @@ class Observation < ActiveRecord::Base
   
   def quality_metric_score(metric)
     quality_metrics.all unless quality_metrics.loaded?
-    metrics = quality_metrics.select{|qm| qm.metric == metric}
+    metrics = quality_metrics.select{|qm| !qm.frozen? && qm.metric == metric}
     return nil if metrics.blank?
     metrics.select{|qm| qm.agree?}.size.to_f / metrics.size
   end
@@ -1211,7 +1222,7 @@ class Observation < ActiveRecord::Base
   
   def human?
     t = community_taxon || taxon
-    t && t.name =~ /^Homo /
+    t && ( t.name =~ /^Homo / || t.name == "Homo" )
   end
   
   def research_grade?
@@ -1223,6 +1234,8 @@ class Observation < ActiveRecord::Base
   end
 
   def photos?
+    # new observations from the uploader may have .photos
+    # but may not yet have observation_p
     return true if photos && photos.any?
     observation_photos.loaded? ? ! observation_photos.empty? : observation_photos.exists?
   end
@@ -1838,7 +1851,14 @@ class Observation < ActiveRecord::Base
     true
   end
 
+  def update_user_counter_caches
+    User.delay( unique_hash: { "User::update_observations_counter_cache": user_id } ).
+      update_observations_counter_cache( user_id )
+    true
+  end
+
   def update_quality_metrics
+    return true if skip_quality_metrics
     if captive_flag.yesish?
       QualityMetric.vote( user, self, QualityMetric::WILD, false )
     elsif captive_flag.noish? && force_quality_metrics
@@ -1900,8 +1920,10 @@ class Observation < ActiveRecord::Base
     taxon.scientific_name.name if taxon && taxon.scientific_name
   end
   
-  def common_name
-    taxon.common_name.name if taxon && taxon.common_name
+  def common_name(options = {})
+    options[:locale] ||= localize_locale
+    options[:place] ||= localize_place
+    taxon.common_name(options).name if taxon && taxon.common_name(options)
   end
   
   def url
@@ -1953,10 +1975,19 @@ class Observation < ActiveRecord::Base
     end
   end
   
-  def self.update_stats_for_observations_of(taxon)
+  def self.update_stats_for_observations_of( taxon )
     taxon = Taxon.find_by_id(taxon) unless taxon.is_a?(Taxon)
     return unless taxon
-    descendant_conditions = taxon.descendant_conditions.to_a
+    conditions = ["taxon_ancestors.ancestor_taxon_id = ?", taxon.id]
+    obs_exist = Observation.
+      joins( "INNER JOIN taxon_ancestors ON taxon_ancestors.taxon_id = observations.taxon_id" ).
+      where( "observations.created_at > ?", taxon.created_at ).
+      where( conditions ).exists?
+    idents_exist = Identification.
+      joins( "INNER JOIN taxon_ancestors ON taxon_ancestors.taxon_id = identifications.taxon_id" ).
+      where( "identifications.created_at > ?", taxon.created_at ).
+      where( conditions ).exists?
+    return unless obs_exist || idents_exist
     result = Identification.elastic_search(
       filters: [ { bool: { should: [
         { term: { "taxon.ancestor_ids": taxon.id } },
@@ -2196,7 +2227,7 @@ class Observation < ActiveRecord::Base
   end
 
   def method_missing(method, *args, &block)
-    return super unless method.to_s =~ /^field:/ || method.to_s =~ /^taxon_[^=]+/
+    return super unless method.to_s =~ /^field:/ || method.to_s =~ /^taxon_[^=]+/ || method.to_s =~ /^ident_by_/
     if method.to_s =~ /^field:/
       of_name = method.to_s.split(':').last
       ofv = observation_field_values.detect{|ofv| ofv.observation_field.normalized_name == of_name}
@@ -2205,6 +2236,18 @@ class Observation < ActiveRecord::Base
       end
     elsif method.to_s =~ /^taxon_/ && !self.class.instance_methods.include?(method) && taxon
       return taxon.send(method.to_s.gsub(/^taxon_/, ''))
+    elsif method.to_s =~ /^ident_by_/ && !self.class.instance_methods.include?( method )
+      user_id = method.to_s[/ident_by_([^\:]+)/, 1]
+      return unless user_id
+      ident = if user_id.to_i > 0
+        identifications.detect{|i| i.current && i.user_id == user_id.to_i }
+      else
+        identifications.detect{|i| i.current && i.user.login == user_id }
+      end
+      return unless ident
+      ident_method = method.to_s[/ident_by_([^\:]+)\:(.+)/, 2]
+      return unless ident_method
+      return ident.send( ident_method )
     end
     super
   end
@@ -2226,17 +2269,23 @@ class Observation < ActiveRecord::Base
     super
   end
 
-  def merge(reject)
-    mutable_columns = self.class.column_names - %w(id created_at updated_at)
+  def merge(reject, options = {})
+    mutable_columns = self.class.column_names - %w(id created_at updated_at uuid)
     mutable_columns.each do |column|
       self.send("#{column}=", reject.send(column)) if send(column).blank?
     end
-    reject.identifications.update_all("current = false")
+    if options[:skip_identifications]
+      reject.identifications.delete_all
+    else
+      reject.identifications.update_all("current = false")
+    end
     merge_has_many_associations(reject)
     reject.destroy
-    identifications.group_by{|ident| [ident.user_id, ident.taxon_id]}.each do |pair, idents|
-      c = idents.sort_by(&:id).last
-      c.update_attributes(:current => true)
+    unless options[:skip_identifications]
+      identifications.group_by{|ident| [ident.user_id, ident.taxon_id]}.each do |pair, idents|
+        c = idents.sort_by(&:id).last
+        c.update_attributes(:current => true)
+      end
     end
     save!
   end
@@ -2244,6 +2293,7 @@ class Observation < ActiveRecord::Base
   def create_observation_review
     return true unless taxon
     return true unless taxon_id_was.blank?
+    return true unless editing_user_id && editing_user_id == user_id
     ObservationReview.where( observation_id: id, user_id: user_id ).first_or_create.touch
     true
   end
@@ -2420,8 +2470,9 @@ class Observation < ActiveRecord::Base
     return false if latitude.blank? && longitude.blank?
     return false if public_positional_accuracy && public_positional_accuracy > uncertainty_cell_diagonal_meters
     return false if inaccurate_location?
-    return false unless passes_quality_metric?(QualityMetric::EVIDENCE)
+    return false unless passes_quality_metric?( QualityMetric::EVIDENCE )
     return false unless appropriate?
+    return false if community_taxon && taxon && !community_taxon.self_and_ancestor_ids.include?( taxon.id )
     true
   end
 
@@ -2459,7 +2510,7 @@ class Observation < ActiveRecord::Base
         connection.execute("DELETE FROM observations_places
           WHERE observation_id IN (#{ ids.join(',') })")
         connection.execute("INSERT INTO observations_places (observation_id, place_id)
-          SELECT o.id, pg.place_id FROM observations o
+          SELECT DISTINCT o.id, pg.place_id FROM observations o
           JOIN place_geometries pg ON ST_Intersects(pg.geom, o.private_geom)
           WHERE o.id IN (#{ ids.join(',') })
           AND pg.place_id IS NOT NULL
@@ -2637,6 +2688,10 @@ class Observation < ActiveRecord::Base
 
   def owners_identification_from_vision=( val )
     self.owners_identification_from_vision_requested = val
+  end
+
+  def reindex_identifications
+    Identification.elastic_index!( ids: identification_ids )
   end
 
   def self.dedupe_for_user(user, options = {})

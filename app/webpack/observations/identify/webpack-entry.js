@@ -12,23 +12,23 @@ import {
   fetchObservations,
   fetchObservationsStats,
   setConfig,
-  updateSearchParams,
-  updateSearchParamsFromPop,
+  updateSearchParamsWithoutHistory,
   updateDefaultParams
 } from "./actions/";
 import { fetchAllControlledTerms } from "../show/ducks/controlled_terms";
 import AppContainer from "./containers/app_container";
 import _ from "lodash";
 
+
 // Use custom relative times for moment
 const shortRelativeTime = I18n.t( "momentjs" ) ? I18n.t( "momentjs" ).shortRelativeTime : null;
-moment.locale( I18n.locale, {
-  relativeTime: Object.assign(
-    {},
-    I18n.t( "momentjs", { locale: "en" } ).shortRelativeTime,
-    shortRelativeTime
-  )
-} );
+const relativeTime = Object.assign(
+  {},
+  I18n.t( "momentjs", { locale: "en" } ).shortRelativeTime,
+  shortRelativeTime
+);
+moment.locale( I18n.locale );
+moment.updateLocale( moment.locale(), { relativeTime } );
 
 const store = createStore(
   rootReducer,
@@ -61,7 +61,7 @@ if ( PREFERRED_PLACE !== undefined && PREFERRED_PLACE !== null ) {
 setupKeyboardShortcuts( store.dispatch );
 
 window.onpopstate = ( e ) => {
-  store.dispatch( updateSearchParamsFromPop( e.state ) );
+  store.dispatch( updateSearchParamsWithoutHistory( e.state ) );
   store.dispatch( fetchObservationsStats() );
 };
 
@@ -72,7 +72,7 @@ const newParams = normalizeParams( urlParams );
 if ( urlParams.hasOwnProperty( "blind" ) ) {
   store.dispatch( setConfig( { blind: true } ) );
 }
-store.dispatch( updateSearchParams( newParams ) );
+store.dispatch( updateSearchParamsWithoutHistory( newParams ) );
 store.dispatch( fetchAllControlledTerms( ) );
 
 // Somewhat magic, so be advised: binding a a couple actions to changes in

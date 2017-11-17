@@ -369,6 +369,9 @@ form .field .description { margin-bottom: 0.5em;}
   flex-order: 1;
   order: 1;
 }
+#header #logonav img {
+  max-height: 42px;
+}
 #header #mainnav {
   white-space: nowrap;
   -webkit-box-flex: 2;      /* OLD - iOS 6-, Safari 3.1-6 */
@@ -913,11 +916,10 @@ ul.leafylist li li:first-child {
 }
 #inatnotice { color: #aaa; background-color: #666; padding-top: 20px; padding-bottom: 20px; }
 #inatnotice a {
-  font-weight: bold;
-  color: #74AC00;
+  color: white;
 }
 #inatnotice a:first-child {
-  color: white;
+  font-weight: bold;
 }
 
 #mobiletogglelink {font-size: 400%;margin-bottom:10%;}

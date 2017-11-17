@@ -76,9 +76,11 @@ class Taxon < ActiveRecord::Base
   before_validation :normalize_rank, :set_rank_level, :remove_rank_from_name
   before_save :set_iconic_taxon, # if after, it would require an extra save
               :capitalize_name
+  after_create :denormalize_ancestry
   after_save :create_matching_taxon_name,
              :set_wikipedia_summary_later,
-             :handle_after_move
+             :handle_after_move,
+             :handle_change_in_completeness
   after_commit :index_observations
 
   validates_presence_of :name, :rank
@@ -102,39 +104,40 @@ class Taxon < ActiveRecord::Base
   }
   
   RANK_LEVELS = {
-    "root"         => 100,
-    "kingdom"      => 70,
-    "subkingdom" => 67,
-    "phylum"       => 60,
-    "subphylum"    => 57,
-    "superclass"   => 53,
-    "class"        => 50,
-    "subclass"     => 47,
-    "infraclass" => 45,
-    "superorder"   => 43,
-    "order"        => 40,
-    "suborder"     => 37,
-    "infraorder"   => 35,
-    "zoosection"   => 34,
-    "zoosubsection" => 33.5,
-    "superfamily"  => 33,
-    "epifamily"    => 32,
-    "family"       => 30,
-    "subfamily"    => 27,
-    "supertribe"   => 26,
-    "tribe"        => 25,
-    "subtribe"     => 24,
-    "genus"        => 20,
-    "genushybrid"  => 20,
-    "subgenus"     => 15,
-    "section" => 13,
-    "subsection" => 12,
-    "species"      => 10,
-    "hybrid"       => 10,
-    "subspecies"   => 5,
-    "variety"      => 5,
-    "form"         => 5,
-    "infrahybrid" => 5
+    "root"            => 100,
+    "kingdom"         => 70,
+    "subkingdom"      => 67,
+    "phylum"          => 60,
+    "subphylum"       => 57,
+    "superclass"      => 53,
+    "class"           => 50,
+    "subclass"        => 47,
+    "infraclass"      => 45,
+    "superorder"      => 43,
+    "order"           => 40,
+    "suborder"        => 37,
+    "infraorder"      => 35,
+    "parvorder"       => 34.5,
+    "zoosection"      => 34,
+    "zoosubsection"   => 33.5,
+    "superfamily"     => 33,
+    "epifamily"       => 32,
+    "family"          => 30,
+    "subfamily"       => 27,
+    "supertribe"      => 26,
+    "tribe"           => 25,
+    "subtribe"        => 24,
+    "genus"           => 20,
+    "genushybrid"     => 20,
+    "subgenus"        => 15,
+    "section"         => 13,
+    "subsection"      => 12,
+    "species"         => 10,
+    "hybrid"          => 10,
+    "subspecies"      => 5,
+    "variety"         => 5,
+    "form"            => 5,
+    "infrahybrid"     => 5
   }
   RANK_LEVELS.each do |rank, level|
     const_set rank.upcase, rank
@@ -388,23 +391,44 @@ class Taxon < ActiveRecord::Base
   # Callbacks ###############################################################
   
   def handle_after_move
-    set_iconic_taxon if ancestry_changed?
+    return true unless ancestry_changed?
+    set_iconic_taxon
     return true if skip_after_move
     denormalize_ancestry
     return true if id_changed?
     update_life_lists
     update_obs_iconic_taxa
-    conditions = ["taxon_ancestors.ancestor_taxon_id = ?", id]
-    obs_exist = Observation.joins( taxon: :taxon_ancestors ).where( conditions ).exists?
-    idents_exist = Identification.joins( taxon: :taxon_ancestors ).where( conditions ).exists?
-    if ( obs_exist || idents_exist )
-      Observation.delay(priority: INTEGRITY_PRIORITY, queue: "slow",
-        unique_hash: { "Observation::update_stats_for_observations_of": id }).
-        update_stats_for_observations_of(id)
-    end
+    Observation.delay(priority: INTEGRITY_PRIORITY, queue: "slow",
+      unique_hash: { "Observation::update_stats_for_observations_of": id }).
+      update_stats_for_observations_of(id)
     elastic_index!
     Taxon.refresh_es_index
     true
+  end
+
+  def handle_change_in_completeness
+    return true unless complete_changed?
+    Taxon.delay( priority: INTEGRITY_PRIORITY, unique_hash: { "Taxon::reindex_descendants_of": id } ).reindex_descendants_of( id )
+  end
+
+  def self.reindex_descendants_of( taxon )
+    Taxon.elastic_index!( scope: Taxon.joins(:taxon_ancestors).where( "taxon_ancestors.ancestor_taxon_id = ?", taxon ) )
+  end
+
+  def complete_species_count
+    if rank_level.to_i <= SPECIES_LEVEL
+      return nil
+    end
+    if !complete? && !ancestors.where( "complete" ).exists?
+      return nil
+    end
+    scope = taxon_ancestors_as_ancestor.
+      select("distinct taxon_ancestors.taxon_id").
+      joins(:taxon).
+      where( "taxon_ancestors.taxon_id != ? AND rank = ? AND is_active", id, Taxon::SPECIES ).
+      joins( "LEFT OUTER JOIN conservation_statuses cs ON cs.taxon_id = taxon_ancestors.taxon_id" ).
+      where( "cs.id IS NULL OR cs.place_id IS NOT NULL OR (cs.place_id IS NULL AND cs.iucn != ?)", Taxon::IUCN_EXTINCT )
+    scope.count
   end
 
   def denormalize_ancestry
@@ -849,10 +873,6 @@ class Taxon < ActiveRecord::Base
   def update_obs_iconic_taxa
     Observation.where(taxon_id: id).update_all(iconic_taxon_id: iconic_taxon_id)
     true
-  end
-  
-  def lsid
-    "lsid:#{URI.parse(CONFIG.site_url).host}:taxa:#{id}"
   end
   
   def update_unique_name(options = {})
@@ -1309,15 +1329,6 @@ class Taxon < ActiveRecord::Base
     tr ? tr.kml_url : nil
   end
 
-  def taxon_ranges_with_kml
-    taxon_ranges = self.taxon_ranges.without_geom.includes(:source).limit(10).select(&:kml_url)
-    taxon_range = if CONFIG.taxon_range_source_id
-      taxon_ranges.detect{|tr| tr.source_id == CONFIG.taxon_range_source_id}
-    end
-    taxon_range ||= taxon_ranges.detect{|tr| !tr.range.blank?}
-    [taxon_range, taxon_ranges - [taxon_range]].flatten
-  end
-
   def all_names
     taxon_names.map(&:name)
   end
@@ -1326,14 +1337,15 @@ class Taxon < ActiveRecord::Base
     skip_grafting = options.delete(:skip_grafting)
     name = normalize_name(name)
     ancestor = options.delete(:ancestor)
+    ratatosk_instance = options.delete(:ratatosk) || ratatosk
     external_names = begin
-      ratatosk.find(name)
+      ratatosk_instance.find(name)
     rescue Timeout::Error => e
       []
     end
     external_names.select!{|en| en.name.downcase == name.downcase} if options[:exact]
     return nil if external_names.blank?
-    external_names.each do |en| 
+    external_names.each do |en|
       if en.save && !skip_grafting && !en.taxon.grafted? && en.taxon.persisted?
         en.taxon.graft_silently
       end
@@ -1470,6 +1482,12 @@ class Taxon < ActiveRecord::Base
 
   def cached_atlas_presence_places
     @cached_atlas_presence_places ||= atlas.presence_places if atlas
+  end
+
+  def current_synonymous_taxon
+    return nil if is_active?
+    TaxonChange.committed.where( "type IN ('TaxonSwap', 'TaxonMerge')" ).
+      input_taxon( self ).order(:id).last.try(:output_taxon)
   end
 
   # Static ##################################################################

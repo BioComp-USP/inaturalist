@@ -15,6 +15,7 @@
 # Author: Purodha
 # Author: Robby
 # Author: Siebrand
+# Author: SimondR
 # Author: Sudachi
 # Author: Walter Klosse
 # Author: Woytecr
@@ -303,6 +304,8 @@ qqq:
   dashboard: '{{Identical|Dashboard}}'
   data_quality: Hi. Here, Data refers to one given observation. So this should be
     "la donnée", not a plurial. Thanks, Julien
+  data_quality_assessment_: Il s'agit d'établir le niveau de qualité (Needs ID, Research
+    Grade ...) de l'observation en question, que l'on décrit ici par "la donnée".
   date_: '{{Identical|Date}}'
   date?: '{{Identical|Date}}'
   date_format:
@@ -350,7 +353,6 @@ qqq:
     is a URL
   delete: '{{Identical|Delete}}'
   delete_taxon_and_merge_most_data_html: where taxon is the name of a taxon
-  dna_: '{{Identical|DNA}}'
   description: '{{Identical|Description}}'
   desription: '{{Identical|Description}}'
   details: '{{Identical|Detail}}'
@@ -358,6 +360,7 @@ qqq:
   device: '{{Identical|Device}}'
   disagree_: '{{Identical|Disagree}}'
   disconnect_provider: where provider is the name of an external provider like Facebook
+  dna_: '{{Identical|DNA}}'
   done: '{{Identical|Done}}'
   download: '{{Identical|Download}}'
   each_place_displays_all_species_inat_knows: where site_name is the name of the site
@@ -517,13 +520,76 @@ qqq:
     leaves a site or tree leaves?
     {{Identical|Leave}}
   lexicons:
-    english: '{{Identical|English}}'
-    french: '{{Identical|French}}'
-    german: '{{Identical|German}}'
-    italian: '{{Identical|Italian}}'
-    korean: '{{Identical|Korean}}'
-    misima_paneati: Language of Papua New Guinea
-    portuguese: '{{Identical|Portuguese}}'
+    afrikaans: Name of this language translated into the target language, *not* into
+      Afrikaans (unless that's the target language)
+    bengali: Name of this language translated into the target language, *not* into
+      Bengali (unless that's the target language)
+    catalan: Name of this language translated into the target language, *not* into
+      Catalan (unless that's the target language)
+    cebuano: Name of this language translated into the target language, *not* into
+      Cebuano (unless that's the target language)
+    creole_french: Name of this language translated into the target language, *not*
+      into creole (French) (unless that's the target language)
+    creole_portuguese: Name of this language translated into the target language,
+      *not* into creole (Portuguese) (unless that's the target language)
+    davawenyo: Name of this language translated into the target language, *not* into
+      Davawenyo (unless that's the target language)
+    dutch: Name of this language translated into the target language, *not* into Dutch
+      (unless that's the target language)
+    english: Name of this language translated into the target language, *not* into
+      English (unless that's the target language)
+    french: Name of this language translated into the target language, *not* into
+      French (unless that's the target language)
+    gela: Name of this language translated into the target language, *not* into Gela
+      (unless that's the target language)
+    german: Name of this language translated into the target language, *not* into
+      German (unless that's the target language)
+    hawaiian: Name of this language translated into the target language, *not* into
+      Hawaiian (unless that's the target language)
+    hebrew: Name of this language translated into the target language, *not* into
+      Hebrew (unless that's the target language)
+    hiligaynon: Name of this language translated into the target language, *not* into
+      Hiligaynon (unless that's the target language)
+    icelandic: Name of this language translated into the target language, *not* into
+      Icelandic (unless that's the target language)
+    ilokano: Name of this language translated into the target language, *not* into
+      Ilokano (unless that's the target language)
+    italian: Name of this language translated into the target language, *not* into
+      Italian (unless that's the target language)
+    japanese: Name of this language translated into the target language, *not* into
+      Japanese (unless that's the target language)
+    korean: Name of this language translated into the target language, *not* into
+      Korean (unless that's the target language)
+    maltese: Name of this language translated into the target language, *not* into
+      Maltese (unless that's the target language)
+    maori: Name of this language translated into the target language, *not* into Maori
+      (unless that's the target language)
+    misima_paneati: Name of this language translated into the target language, *not*
+      into Misima-paneati (unless that's the target language)
+    norwegian: Name of this language translated into the target language, *not* into
+      Norwegian (unless that's the target language)
+    pangasinan: Name of this language translated into the target language, *not* into
+      Pangasinan (unless that's the target language)
+    portuguese: Name of this language translated into the target language, *not* into
+      Portuguese (unless that's the target language)
+    romanian: Name of this language translated into the target language, *not* into
+      Romanian (unless that's the target language)
+    russian: Name of this language translated into the target language, *not* into
+      Russian (unless that's the target language)
+    spanish: Name of this language translated into the target language, *not* into
+      Spanish (unless that's the target language)
+    swedish: Name of this language translated into the target language, *not* into
+      Swedish (unless that's the target language)
+    tagalog: Name of this language translated into the target language, *not* into
+      Tagalog (unless that's the target language)
+    tahitian: Name of this language translated into the target language, *not* into
+      Tahitian (unless that's the target language)
+    tokelauan: Name of this language translated into the target language, *not* into
+      Tokelauan (unless that's the target language)
+    turkish: Name of this language translated into the target language, *not* into
+      Turkish (unless that's the target language)
+    waray_waray: Name of this language translated into the target language, *not*
+      into Waray-Waray (unless that's the target language)
   less: '{{Identical|Less}}'
   licensed_site_photos: where site_name is the name of the site
   licensing: '{{Identical|Licensing}}'
@@ -722,7 +788,6 @@ qqq:
   photo_by_id_attribution: where id is an identifier and attribution is the author's
     name
   photo_destroyed_because_it_was_deleted_from: where site_name is the site name
-  photo_s: '{{Identical|Photo}}'
   photos_of: intended to precede subject, e.g. Photos of Pigeons
   photos_size:
     small: '{{Identical|Small}}'
@@ -735,8 +800,6 @@ qqq:
   photos_size_photo: |-
     number of photos
     {{Identical|Photo}}
-  picasa_account_not_linked: where site is the site name and user is the name of a
-    user
   place: '{{Identical|Place}}'
   place_added_to_inat_by: where site_name is the site name
   place_geo:
@@ -804,6 +867,7 @@ qqq:
   possessive_user: where user is the name of a user
   post: '{{Identical|Post}}'
   posts: '{{Identical|Post}}'
+  present: '{{Identical|Present}}'
   preview_personal_message: where site is the site name
   previewing: '{{Identical|Previewing}}'
   previous: '{{Identical|Previous}}'
@@ -863,6 +927,7 @@ qqq:
   removing: '{{Identical|Removing}}'
   reply: '{{Identical|Reply}}'
   required: '{{Identical|Required}}'
+  required_: '{{Identical|Required}}'
   research: '{{Identical|Research}}'
   resolved: '{{Identical|Resolved}}'
   resolver_said_x_html: where resolver is the name of a user and x is a message
@@ -880,8 +945,8 @@ qqq:
     where noun is a resource like an observation
     used in "Your Observations", "Your Lists", "Your Identifications" and "Your Projects"
   second_person_possessive_singular_: where noun is a resource like an observation
-  select_all: '{{Identical|Select all}}'
   select: '{{Identical|Select}}'
+  select_all: '{{Identical|Select all}}'
   select_photos_from_your_photo_stream: where site_name is the name of a site
   selected: '{{Identical|Selected}}'
   send: '{{Identical|Send}}'
@@ -990,7 +1055,6 @@ qqq:
     {{Identical|Ago}}
   title: '{{Identical|Title}}'
   to: '{{Identical|To}}'
-  to_include_your_picassa_with_inat: where site_name is the name of the site
   to_recipient: '{{Identical|To}}'
   today: '{{Identical|Today}}'
   too_many_observations_csv: where max_rows is the maximum number of rows
@@ -1022,21 +1086,23 @@ qqq:
   use_name_as_a_placeholder: where name is the name of a new taxon not yet in our
     database
   user: '{{Identical|User}}'
-  user_added_an_observation_html: where user is the name of a user
-  user_added_an_x_to_noun_html: where user is the name of a user and x is a resource
-    like an observation and nown is a resource like a project
-  user_added_a_x_to_noun_html: where user is the name of a user and x is a resource
-    like an observation and nown is a resource like a project
-  user_added_an_x_to_noun_by_html: |-
-    where user is the name of a user and x is a resource like an observation
-    and nown is a resource like a project and by is the owner of that resource
   user_added_a_x_to_noun_by_html: |-
     where user is the name of a user and x is a resource like an observation
     and nown is a resource like a project and by is the owner of that resource
+  user_added_a_x_to_noun_html: where user is the name of a user and x is a resource
+    like an observation and nown is a resource like a project
+  user_added_an_observation_field_html: where user and owner are names of users and
+    field_name is the name of a field like eating
+  user_added_an_observation_html: where user is the name of a user
+  user_added_an_x_to_noun_by_html: |-
+    where user is the name of a user and x is a resource like an observation
+    and nown is a resource like a project and by is the owner of that resource
+  user_added_an_x_to_noun_html: where user is the name of a user and x is a resource
+    like an observation and nown is a resource like a project
   user_added_x_observations_html: where user is the name of a user and x a number
+  user_commented: '{{Identical|Commented}}'
   user_commented_on: where user is the name of a user and title is a resource like
     an observation and time is the time
-  user_commented: '{{Identical|Commented}}'
   user_follows: |-
     where user is the name of a user
     {{Identical|Follow}}
@@ -1045,18 +1111,16 @@ qqq:
   user_hasnt: where user is the name of a user
   user_invite_observation_to_project: where user is the name of a user and project
     and observation are names of the project and observation
+  user_invited_you_to_join_html: where user is the name of a user
   user_invited_you_to_join_project: where user is the name of a user and project is
     the name of a project
-  user_invited_you_to_join_html: where user is the name of a user
   user_invited_you_to_join_this_project_on_date_html: where user is the name of a
     user and date is a date
   user_invited_your_x_to_a_project_html: where user is the name of a user and x is
     a resource like an observation
+  user_is_a_naturalist: where user is the name of a user
   user_is_now_role_for_project_html: where user is the name of a user role is a role
     like curator and project is the name of a project
-  user_added_an_observation_field_html: where user and owner are names of users and
-    field_name is the name of a field like eating
-  user_is_a_naturalist: where user is the name of a user
   user_s: where user is the name of a user
   user_s_id: where user is the name of a user
   user_s_lists: |-
@@ -1117,6 +1181,7 @@ qqq:
   welcome_to_inat: where site_name is the name of the site
   welcome_to_guides: where site_name is the name of the site
   welcome_to_x_project: where project is the name of a project
+  were_pretty_sure_this_is_in_the_rank: where rank is a taxonomic rank
   where_do_x_live: where taxa is the name of a taxon
   where_does_x_live: where taxa is the name of a taxon
   widget: '{{Identical|Widget}}'
@@ -1156,8 +1221,6 @@ qqq:
   you_can_sign_free_at: where site name is the name of the site
   you_cant_rotate_photos_hostde_outside: where site name is the name of the site
   you_have_left_x_project: where project is the name of the project
-  you_havent_linked_your_inaturalist_picasa_account: where site name is the name of
-    the site
   you_retain_full_copyright: where site name is the name of the site
   you_retain_full_copyright_over_your_content: where site name is the name of the
     site
@@ -1179,8 +1242,6 @@ qqq:
   your_sure_delete_taxon_from_list?: where taxon is the name of a taxon
   yours: '{{Identical|Your}}'
   youre_viewing_site_name_observations_html: where site_name is the name of the site
-  youve_linked_your_inaturalist_picasa_account: where site_name is the name of the
-    site
   zoom_to_taxon_name: where taxonname is the name of a taxon
   zoom_to_x: where x is the location
   views:
@@ -1252,6 +1313,7 @@ qqq:
             (of an arthropod, etc.) Callow. In the pale, soft-bodied state that follows moulting, before the hardening and darkening of the cuticle, during which the creature is able to expand.
 
             En Wikipedia, «Teneral» redirige a «Ecdysis», y en la versión en castellano «Muda».
+            {{Identical|Teneral}}
           Insect life stage=adult: '{{Identical|Adult}}'
     users:
       dashboard:

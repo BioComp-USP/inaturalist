@@ -19,6 +19,8 @@ class ApplicationController < ActionController::Base
   before_filter :remove_header_and_footer_for_apps
   before_filter :login_from_param
   before_filter :set_site
+  before_filter :draft_site_requires_login
+  before_filter :draft_site_requires_admin
   before_filter :set_ga_trackers
   before_filter :set_request_locale
   before_filter :sign_out_spammers
@@ -50,37 +52,50 @@ class ApplicationController < ActionController::Base
   end
 
   def set_site
-    @site ||= CONFIG.site unless Rails.env.test?
-    if ( !@site || !@site.is_a?( Site ) ) && CONFIG.site_id
-      @site = Site.find_by_id(CONFIG.site_id)
-      CONFIG.site = @site unless Rails.env.test?
+    if params[:inat_site_id]
+      @site ||= Site.find( params[:inat_site_id] )
     end
-    @site ||= Site.where("url LIKE '%#{request.host}%'").first
+    @site ||= Site.where( "url LIKE '%#{request.host}%'" ).first
+    @site ||= Site.default
+  end
+
+  def draft_site_requires_login
+    return unless @site && @site.draft?
+    return if [ login_path, user_session_path, session_path ].include?( request.path )
+    doorkeeper_authorize! if authenticate_with_oauth?
+    authenticate_user! unless ( authenticated_with_oauth? || logged_in? )
+  end
+
+  def draft_site_requires_admin
+    return unless @site && @site.draft?
+    return if [ login_path, user_session_path, session_path ].include?( request.path )
+    return redirect_to login_path if !current_user
+    unless current_user.is_admin? ||
+        ( @site && @site.site_admins.where( user_id: current_user ).first )
+      sign_out current_user
+      flash[:error] = t(:only_administrators_may_access_that_page)
+      redirect_to login_path
+    end
   end
 
   def set_ga_trackers
     return true unless request.format.blank? || request.format.html?
-    trackers = []
-    if CONFIG.google_analytics
-      if CONFIG.google_analytics.trackers
-        trackers += CONFIG.google_analytics.trackers
-      elsif CONFIG.google_analytics.tracker_id
-        trackers << ['default', CONFIG.google_analytics.tracker_id]
-      end
+    trackers = [ ]
+    if Site.default && !Site.default.google_analytics_tracker_id.blank?
+      trackers << [ "default", Site.default.google_analytics_tracker_id ]
     end
-    if @site && !@site.google_analytics_tracker_id.blank?
-      trackers << [@site.name.gsub(/\s+/, '').underscore, @site.google_analytics_tracker_id]
+    if @site && @site != Site.default && !@site.google_analytics_tracker_id.blank?
+      trackers << [ @site.name.gsub(/\s+/, '').underscore, @site.google_analytics_tracker_id ]
     end
-    request.env['inat_ga_trackers'] = trackers unless trackers.blank?
+    request.env[ "inat_ga_trackers" ] = trackers unless trackers.blank?
   end
 
   def set_request_locale
     # use params[:locale] for single-request locale settings,
-    # otherwise use the session, user's preferred, or site default locale
+    # otherwise use the session, user's preferred, or site default,
+    # or application default locale
     I18n.locale = params[:locale] || session[:locale] ||
-      current_user.try(:locale) || I18n.default_locale
-    I18n.locale = current_user.try(:locale) if I18n.locale.blank?
-    I18n.locale = I18n.default_locale if I18n.locale.blank?
+      current_user.try(:locale) || @site.locale || I18n.default_locale
     unless I18N_SUPPORTED_LOCALES.include?( I18n.locale.to_s )
       I18n.locale = I18n.default_locale
     end
@@ -263,10 +278,10 @@ class ApplicationController < ActionController::Base
       class_name = class_name.to_s.underscore.camelcase
       klass = Object.const_get(class_name)
     end
-    record = klass.find(params[:id] || params["#{class_name}_id"]) rescue nil
-    if !record && klass.respond_to?(:find_by_uuid)
+    if klass.respond_to?(:find_by_uuid)
       record = klass.find_by_uuid(params[:id] || params["#{class_name}_id"])
     end
+    record ||= klass.find(params[:id] || params["#{class_name}_id"]) rescue nil
     instance_variable_set "@#{class_name.underscore}", record
     render_404 unless record
   end
@@ -496,9 +511,20 @@ class ApplicationController < ActionController::Base
   end
 
   def authenticate_with_oauth?
+    # Don't want OAuth if we're already authenticated
     return false if !session.blank? && !session['warden.user.user.key'].blank?
     return false if request.authorization.to_s =~ /^Basic /
+    # Need an access token for OAuth
     return false unless !params[:access_token].blank? || request.authorization.to_s =~ /^Bearer /
+    # If the bearer token is a JWT with a user we don't want to go through
+    # Doorkeeper's OAuth-based flow
+    token = request.authorization.to_s.split( /\s+/ ).last
+    jwt_claims = begin
+      ::JsonWebToken.decode( token )
+    rescue JWT::DecodeError => e
+      nil
+    end
+    return false if jwt_claims && jwt_claims.fetch( "user_id" )
     @doorkeeper_for_called = true
   end
 
@@ -533,7 +559,7 @@ class ApplicationController < ActionController::Base
         @error_msg = if current_user.is_admin?
           @job.last_error
         else
-          t(:this_job_failed_to_run, :email => CONFIG.help_email)
+          t(:this_job_failed_to_run, email: @site.email_help)
         end
       elsif @job
         @status = "working"
@@ -574,6 +600,10 @@ class ApplicationController < ActionController::Base
     head(:ok) if request.request_method == "OPTIONS"
   end
 
+  # NOTE: this is called as part of ActionController::Instrumentation, and not
+  # referenced elsewhere within this codebase. The payload data will be used
+  # by config/initializers/logstasher.rb
+  #
   # adding extra info to the payload sent to ActiveSupport::Notifications
   # used in metrics collecting libraries like the Logstasher
   def append_info_to_payload(payload)
@@ -584,6 +614,7 @@ class ApplicationController < ActionController::Base
       payload.merge!(Logstasher.payload_from_user( current_user ))
     end
   end
+
 end
 
 # Override the Google Analytics insertion code so it won't track admins

@@ -1,4 +1,5 @@
 import React, { PropTypes } from "react";
+import ReactDOM from "react-dom";
 import _ from "lodash";
 import {
   Button,
@@ -21,8 +22,36 @@ class Suggestions extends React.Component {
   constructor( ) {
     super( );
     this.state = {
-      scrollTopWas: null
+      scrollTopWas: null,
+      detailTaxonChangedFor: null
     };
+  }
+  componentWillReceiveProps( nextProps ) {
+    if (
+      nextProps.detailTaxon &&
+      this.props.detailTaxon &&
+      this.props.detailTaxon.id !== nextProps.detailTaxon.id
+    ) {
+      if ( this.props.prevTaxon && this.props.prevTaxon.id === nextProps.detailTaxon.id ) {
+        this.setState( { detailTaxonChangedFor: "prev" } );
+      } else {
+        this.setState( { detailTaxonChangedFor: "next" } );
+      }
+    } else {
+      this.setState( { detailTaxonChangedFor: null } );
+    }
+  }
+  componentDidUpdate( ) {
+    if ( this.state.detailTaxonChangedFor ) {
+      const domNode = ReactDOM.findDOMNode( this );
+      $( ".detail-taxon", domNode ).removeClass( "changed" );
+      $( ".detail-taxon", domNode ).addClass( `will-change-for-${this.state.detailTaxonChangedFor}` );
+      setTimeout( ( ) => {
+        $( ".detail-taxon", domNode ).addClass( "changed" );
+        $( ".detail-taxon", domNode ).removeClass( "will-change-for-prev" );
+        $( ".detail-taxon", domNode ).removeClass( "will-change-for-next" );
+      }, 100 );
+    }
   }
   scrollToTop( ) {
     this.setState( { scrollTopWas: $( ".Suggestions" ).scrollTop( ) } );
@@ -66,7 +95,10 @@ class Suggestions extends React.Component {
               bsSize="xs"
               bsStyle="primary"
               onClick={ ( ) => {
-                that.props.chooseTaxon( taxon, { observation: that.props.observation } );
+                that.props.chooseTaxon( taxon, {
+                  observation: that.props.observation,
+                  vision: that.props.query.source === "visual"
+                } );
               } }
             >
               { I18n.t( "select" ) }
@@ -108,13 +140,17 @@ class Suggestions extends React.Component {
       loading,
       detailPhotoIndex,
       observation,
-      chooseTaxon
+      chooseTaxon,
+      prevTaxon,
+      nextTaxon
     } = this.props;
     let detailTaxonImages;
     if ( detailTaxon && detailTaxon.taxonPhotos && detailTaxon.taxonPhotos.length > 0 ) {
+      // Note key is critical here. See comment below on renderItem
       detailTaxonImages = detailTaxon.taxonPhotos.map( taxonPhoto => ( {
-        original: taxonPhoto.photo.photoUrl( "large" ),
-        zoom: taxonPhoto.photo.photoUrl( "original" ),
+        key: `detail-taxon-${detailTaxon.id}-photo-${taxonPhoto.photo.id}`,
+        original: taxonPhoto.photo.photoUrl( "medium" ),
+        zoom: taxonPhoto.photo.photoUrl( "original" ) || taxonPhoto.photo.photoUrl( "large" ),
         thumbnail: taxonPhoto.photo.photoUrl( "square" ),
         description: (
           <div className="photo-meta">
@@ -142,6 +178,10 @@ class Suggestions extends React.Component {
     }
     let detailPhotos = <div className="noresults">{ I18n.t( "no_photos" ) }</div>;
     if ( detailTaxonImages && detailTaxonImages.length > 0 ) {
+      // Using a custom renderItem method to ensure each slide has a unique key.
+      // Without that the element won't get re-rendered with each new taxon and
+      // the EasyZoom flyout can get stuck with the first taxon that gets
+      // rendered.
       detailPhotos = (
         <ZoomableImageGallery
           items={detailTaxonImages}
@@ -149,8 +189,28 @@ class Suggestions extends React.Component {
           lazyLoad={false}
           server
           showNav={false}
+          disableArrowKeys
+          showFullscreenButton={ false }
+          showPlayButton={ false }
           slideIndex={detailPhotoIndex}
           currentIndex={detailPhotoIndex}
+          renderItem={ item => (
+            <div className="image-gallery-image" key={ item.key }>
+              <img
+                src={item.original}
+                alt={item.originalAlt}
+                srcSet={item.srcSet}
+                sizes={item.sizes}
+                title={item.originalTitle}
+              />
+              {
+                item.description &&
+                  <span className="image-gallery-description">
+                    {item.description}
+                  </span>
+              }
+            </div>
+          ) }
         />
       );
     }
@@ -278,11 +338,27 @@ class Suggestions extends React.Component {
                       return false;
                     } }
                   >
-                    <i className="fa fa-arrow-circle-left"></i> { I18n.t( "back_to_suggestions" ) }
+                    <i className="fa fa-chevron-circle-left"></i> { I18n.t( "back_to_suggestions" ) }
                   </a>
+                  <div className="prevnext pull-right">
+                    <Button
+                      disabled={ prevTaxon === null }
+                      onClick={ ( ) => setDetailTaxon( prevTaxon ) }
+                      className="prev"
+                    >
+                      <i className="fa fa-chevron-circle-left"></i> { I18n.t( "prev" ) }
+                    </Button>
+                    <Button
+                      disabled={ nextTaxon === null }
+                      onClick={ ( ) => setDetailTaxon( nextTaxon ) }
+                      className="next"
+                    >
+                      { I18n.t( "next" ) } <i className="fa fa-chevron-circle-right"></i>
+                    </Button>
+                  </div>
                 </div>
                 { detailTaxon ? (
-                  <div>
+                  <div className={ `detail-taxon ${detailTaxonImages.length > 1 ? "multiple-photos" : "single-photo"}` }>
                     { detailPhotos }
                     <div className="obs-modal-header">
                       <SplitTaxon
@@ -325,7 +401,10 @@ class Suggestions extends React.Component {
             </Button>
             <Button
               bsStyle="primary"
-              onClick={ ( ) => chooseTaxon( detailTaxon, { observation } ) }
+              onClick={ ( ) => chooseTaxon( detailTaxon, {
+                observation,
+                vision: query.source === "visual"
+              } ) }
             >
               { I18n.t( "select_this_taxon" ) }
             </Button>
@@ -345,7 +424,9 @@ Suggestions.propTypes = {
   loading: PropTypes.bool,
   detailPhotoIndex: PropTypes.number,
   observation: PropTypes.object,
-  chooseTaxon: PropTypes.func
+  chooseTaxon: PropTypes.func,
+  prevTaxon: PropTypes.object,
+  nextTaxon: PropTypes.object
 };
 
 Suggestions.defaultProps = {

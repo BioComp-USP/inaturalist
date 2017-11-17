@@ -1,14 +1,17 @@
+import _ from "lodash";
 import React, { PropTypes } from "react";
 import { Dropdown, MenuItem } from "react-bootstrap";
 
-
 const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
-  setFlaggingModalState, linkTarget} ) => {
+  setFlaggingModalState, linkTarget } ) => {
   if ( !item ) { return ( <div /> ); }
   const isID = !!item.taxon;
   let menuItems = [];
   const loggedInUser = ( config && config.currentUser ) ? config.currentUser : null;
   const viewerIsActor = loggedInUser && loggedInUser.id === item.user.id;
+  const viewerIsCurator = loggedInUser && loggedInUser.roles && (
+    loggedInUser.roles.indexOf( "admin" ) >= 0 || loggedInUser.roles.indexOf( "curator" ) >= 0
+  );
   if ( isID ) {
     if ( viewerIsActor ) {
       menuItems.push( (
@@ -40,7 +43,7 @@ const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
           </MenuItem>
         ) );
       }
-    } else {
+    } else if ( loggedInUser ) {
       menuItems.push( (
         <MenuItem
           key={ `id-flag-${item.id}` }
@@ -85,7 +88,9 @@ const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
         </a>
       </div>
     ) );
-    menuItems.push( ( <MenuItem divider key={ `id-menu-divider-${item.id}` } /> ) );
+    if ( !_.isEmpty( menuItems ) ) {
+      menuItems.push( ( <MenuItem divider key={ `id-menu-divider-${item.id}` } /> ) );
+    }
     menuItems.push( ( <div key={ `id-menu-links-${item.id}` } className="search-links">
       <div className="text-muted">
         { I18n.t( "view_observations_of_this_taxon_by" ) }:
@@ -111,7 +116,7 @@ const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
           { I18n.t( "delete" ) }
         </MenuItem>
       ) );
-    } else {
+    } else if ( loggedInUser ) {
       menuItems.push( (
         <MenuItem
           key={ `comment-flag-${item.id}` }
@@ -120,6 +125,16 @@ const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
           { I18n.t( "flag" ) }
         </MenuItem>
       ) );
+      if ( viewerIsCurator ) {
+        menuItems.push( (
+          <MenuItem
+            key={ `comment-delete-${item.id}` }
+            eventKey="delete"
+          >
+            { I18n.t( "delete" ) }
+          </MenuItem>
+        ) );
+      }
     }
   }
   return (
@@ -143,7 +158,7 @@ const ActivityItemMenu = ( { item, config, deleteComment, deleteID, restoreID,
             }
           } }
         >
-          <Dropdown.Toggle noCaret disabled={ !!item.api_status }>
+          <Dropdown.Toggle noCaret disabled={ !!item.api_status || _.isEmpty( menuItems ) }>
             <i className="fa fa-chevron-down" />
           </Dropdown.Toggle>
           <Dropdown.Menu className="dropdown-menu-right">

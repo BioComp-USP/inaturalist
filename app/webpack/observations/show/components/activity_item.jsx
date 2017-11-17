@@ -5,7 +5,7 @@ import { OverlayTrigger, Panel, Tooltip } from "react-bootstrap";
 import moment from "moment-timezone";
 import SplitTaxon from "../../../shared/components/split_taxon";
 import UserText from "../../../shared/components/user_text";
-import UserImage from "../../identify/components/user_image";
+import UserImage from "../../../shared/components/user_image";
 import ActivityItemMenu from "./activity_item_menu";
 import util from "../util";
 
@@ -23,7 +23,7 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
     <a
       className="user"
       href={ `/people/${item.user.login}` }
-      target={linkTarget}
+      target={ linkTarget }
     >
       { item.user.login }
     </a>
@@ -32,9 +32,9 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
     let buttons = [];
     let canAgree = false;
     let userAgreedToThis;
-    if ( item.current && firstDisplay && item.user.id !== config.currentUser.id ) {
+    if ( loggedIn && item.current && firstDisplay && item.user.id !== config.currentUser.id ) {
       if ( currentUserID ) {
-        canAgree = util.taxaDissimilar( currentUserID.taxon, taxon );
+        canAgree = currentUserID.taxon.id !== taxon.id;
         userAgreedToThis = currentUserID.agreedTo && currentUserID.agreedTo.id === item.id;
       } else {
         canAgree = true;
@@ -77,18 +77,19 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
     if ( !item.current ) { className = "withdrawn"; }
     contents = (
       <div className="identification">
+        { buttonDiv }
         <div className="taxon">
-          <a href={ `/taxa/${taxon.id}` }>
+          <a href={ `/taxa/${taxon.id}` } target={ linkTarget }>
             { taxonImageTag }
           </a>
           <SplitTaxon
             taxon={ taxon }
             url={ `/taxa/${taxon.id}` }
             noParens
-            target={linkTarget}
+            target={ linkTarget }
+            showMemberGroup
           />
         </div>
-        { buttonDiv }
         { item.body && ( <UserText text={ item.body } className="id_body" /> ) }
       </div>
     );
@@ -103,7 +104,13 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
   if ( unresolvedFlags.length > 0 ) {
     panelClass = "flagged";
     status = ( <span key={ `flagged-${item.id}` } className="item-status">
-      <i className="fa fa-flag" /> { I18n.t( "flagged_" ) }
+      <a
+        href={`/${isID ? "identifications" : "comments"}/${item.id}/flags`}
+        rel="nofollow"
+        target="_blank"
+      >
+        <i className="fa fa-flag" /> { I18n.t( "flagged_" ) }
+      </a>
     </span> );
   } else if ( item.category && item.current ) {
     let idCategory;
@@ -130,6 +137,7 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
     if ( idCategory ) {
       status = (
         <OverlayTrigger
+          container={ $( "#wrapper.bootstrap" ).get( 0 ) }
           placement="top"
           delayShow={ 200 }
           overlay={ (
@@ -144,12 +152,12 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
     }
   }
   let taxonChange;
-  if ( item.taxon_change_id ) {
-    const type = _.snakeCase( item.taxon_change_type );
+  if ( item.taxon_change ) {
+    const type = _.snakeCase( item.taxon_change.type );
     taxonChange = ( <div className="taxon-change">
       <i className="fa fa-refresh" /> { I18n.t( "this_id_was_added_due_to_a" ) } <a
-        href={ `/taxon_changes/${item.taxon_change_id}` }
-        target={linkTarget}
+        href={ `/taxon_changes/${item.taxon_change.id}` }
+        target={ linkTarget }
         className="linky"
       >
          { _.startCase( I18n.t( type ) ) }
@@ -161,7 +169,7 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
   return (
     <div className={ `ActivityItem ${className} ${byClass}` }>
       <div className="icon">
-        <UserImage user={ item.user } />
+        <UserImage user={ item.user } linkTarget={ linkTarget } />
       </div>
       <Panel className={ panelClass } header={(
         <span>
@@ -175,9 +183,13 @@ const ActivityItem = ( { observation, item, config, deleteComment, deleteID, fir
             setFlaggingModalState={ setFlaggingModalState }
             linkTarget={linkTarget}
           />
-          <span className="time">
+          <time
+            className="time"
+            dateTime={ item.created_at }
+            title={ moment( item.created_at ).format( "LLL" ) }
+          >
             { relativeTime }
-          </span>
+          </time>
           { status }
         </span>
         )}

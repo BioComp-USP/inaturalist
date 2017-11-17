@@ -35,6 +35,7 @@
     background: $light-grey;
     .inputs {
       margin-left: 35px;
+      margin-top: 5px;
       .yes, .no {
         display: inline-block;
       }
@@ -71,10 +72,12 @@
     .fa {
       margin-right: 5px;
     }
-    a.view {
-      font-weight: normal;
-      float: right;
+    a {
       color: $bootstrap-link-color;
+      &.view {
+        font-weight: normal;
+        float: right;
+      }
     }
   }
 }

@@ -53,10 +53,15 @@
 $galleryHeightElements: "
   .ObservationModal .image-gallery,
   .ObservationModal .image-gallery-content,
-  .ObservationModal .image-gallery-content > div,
+  .ObservationModal .image-gallery-swipe,
+  .ObservationModal .image-gallery-slide-wrapper,
   .ObservationModal .image-gallery-slides,
   .ObservationModal .image-gallery-slide,
+  .ObservationModal .image-gallery-content .image-gallery-image,
+  .ObservationModal .image-gallery-content .image-gallery-image > img,
+  .ObservationModal .image-gallery-content .image-gallery-image .unzoomable > img,
   .ObservationModal .easyzoom,
+  .ObservationModal .unzoomable,
   .ObservationModal .easyzoom > a,
   .ObservationModal .easyzoom > a img
 ";
@@ -64,9 +69,16 @@ $galleryHeightElements: "
 #{$galleryHeightElements} {
   display: flex;
   flex-direction: column;
+  flex: 2;
   object-fit: contain;
   width: 100%;
   height: 100%;
+  background-color: transparent;
+  overflow: hidden;
+}
+
+.ObservationModal .image-gallery-image {
+  flex: 2
 }
 
 .ObservationModal .easyzoom > a img {
@@ -106,6 +118,10 @@ $galleryHeightElements: "
   padding: 5px;
   z-index: 1;
 }
+.ObservationModal .image-gallery-thumbnail {
+  width: 50px;
+  margin: 0 5px;
+}
 .ObservationModal .image-gallery-thumbnail img {
   max-width: 50px !important;
   max-height: 50px !important;
@@ -119,6 +135,15 @@ $galleryHeightElements: "
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  align-items: center;
+  .sounds {
+    width: 100%;
+    audio {
+      width: 100%;
+      display: block;
+      margin-top: 10px;
+    }
+  }
 }
 .ObservationModal .sidebar {
   overflow-y: auto;
@@ -326,15 +351,6 @@ tr.keyboard-shortcuts td {
   white-space: nowrap;
   font-weight: bold;
   vertical-align: top;
-}
-
-.ObservationModal .photos.sounds .image-gallery {
-  margin-bottom: 10px;
-}
-.ObservationModal .photos.sounds .image-gallery,
-.ObservationModal .photos.sounds .image-gallery-content,
-.ObservationModal .photos.sounds .image-gallery-content img {
-  height: 260px;
 }
 .ObservationModal .place {
   background-color: #DDDDDD;
@@ -592,7 +608,7 @@ body > div > [role="dialog"] .ActivityItem {
     .ac-label {
       color: #555;
       .title {
-        font-size: 1.0em;
+        font-size: 14px;
       }
     }
   }

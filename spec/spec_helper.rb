@@ -46,6 +46,7 @@ RSpec.configure do |config|
 
   config.before(:each) do
     Delayed::Job.delete_all
+    make_default_site
   end
 
   config.after(:each) do
@@ -85,6 +86,12 @@ def without_delay
   Delayed::Worker.delay_jobs = false
   r = yield
   Delayed::Worker.delay_jobs = true
+  r
+end
+
+def after_delayed_job_finishes
+  r = yield
+  Delayed::Worker.new.work_off
   r
 end
 
@@ -158,13 +165,6 @@ class LocalPhoto
   end
 end
 
-def stub_config(options = {})
-  options.each do |k,v|
-    CONFIG.send("#{ k }=",
-      (v.is_a?(Hash) ? OpenStruct.new_recursive(v) : v))
-  end
-end
-
 # Turn on elastic indexing for certain models. We do this selectively b/c
 # updating ES slows down the specs.
 def enable_elastic_indexing(*args)
@@ -188,4 +188,12 @@ def disable_elastic_indexing(*args)
     klass.send :skip_callback, :touch, :after, :elastic_index!
     klass.__elasticsearch__.delete_index!
   end
+end
+
+def make_default_site
+  Site.make!(
+    name: "iNaturalist",
+    preferred_site_name_short: "iNat",
+    preferred_email_noreply: "no-reply@inaturalist.org"
+  ) unless Site.any?
 end

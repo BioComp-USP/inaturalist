@@ -789,15 +789,6 @@ describe Taxon, "moving" do
     expect( jobs.select{|j| j.handler =~ /update_stats_for_observations_of/m} ).not_to be_blank
   end
 
-  it "should not queue a job to update observation stats if there are no observations" do
-    Delayed::Job.delete_all
-    stamp = Time.now
-    expect(Observation.of(@Calypte).count).to eq(0)
-    @Calypte.update_attributes(:parent => @Hylidae)
-    jobs = Delayed::Job.where("created_at >= ?", stamp)
-    expect(jobs.select{|j| j.handler =~ /update_stats_for_observations_of/m}).to be_blank
-  end
-
   it "should update community taxa" do
     fam = Taxon.make!(:rank => "family")
     subfam = Taxon.make!(:rank => "subfamily", :parent => fam)
@@ -917,6 +908,36 @@ describe Taxon, "grafting" do
     t = Taxon.make!(:name => "Pseudacris foo")
     t.graft
     expect(t.parent).to eq(@Pseudacris)
+  end
+
+  describe "indexing" do
+    before(:each) { enable_elastic_indexing( Identification ) }
+    after(:each) { disable_elastic_indexing( Identification ) }
+    before(:all) { DatabaseCleaner.strategy = :truncation }
+    after(:all)  { DatabaseCleaner.strategy = :transaction }
+
+    it "should re-index identifications in the observations index" do
+      o = make_research_grade_candidate_observation
+      3.times { Identification.make!( observation: o, taxon: @Pseudacris ) }
+      i = Identification.make!( observation: o )
+      i.reload
+      expect( i.taxon ).not_to be_grafted
+      expect( i.category ).to eq Identification::MAVERICK
+      es_o_idents = Observation.elastic_search( where: { id: o.id } ).results.results[0].identifications.sort_by(&:id)
+      expect( es_o_idents[0].category ).to eq Identification::IMPROVING
+      expect( es_o_idents[1].category ).to eq Identification::SUPPORTING
+      expect( es_o_idents[2].category ).to eq Identification::SUPPORTING
+      expect( es_o_idents[3].category ).to eq Identification::MAVERICK
+      without_delay { i.taxon.update_attributes( parent: @Pseudacris ) }
+      i.reload
+      expect( i.taxon.ancestor_ids ).to include( @Pseudacris.id)
+      expect( i.category ).to eq Identification::LEADING
+      es_o_idents = Observation.elastic_search( where: { id: o.id } ).results.results[0].identifications.sort_by(&:id)
+      expect( es_o_idents[0].category ).to eq Identification::IMPROVING
+      expect( es_o_idents[1].category ).to eq Identification::SUPPORTING
+      expect( es_o_idents[2].category ).to eq Identification::SUPPORTING
+      expect( es_o_idents[3].category ).to eq Identification::LEADING
+    end
   end
 end
 
@@ -1117,6 +1138,72 @@ describe "rank helpers" do
     it "should return nil if the taxon is a hybrid" do
       hybrid = Taxon.make!( name: "Viola × palmata", rank: Taxon::HYBRID )
       expect( hybrid.species ).to be_nil
+    end
+  end
+end
+
+describe "complete" do
+  it "should reindex all descendants when changed" do
+    family = Taxon.make!( rank: Taxon::FAMILY )
+    genus = Taxon.make!( rank: Taxon::GENUS, parent: family )
+    species = Taxon.make!( rank: Taxon::SPECIES, parent: genus )
+    Delayed::Worker.new.work_off
+    es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
+    expect( es_genus.complete_species_count ).to be_nil
+    without_delay { family.update_attributes!( complete: true ) }
+    genus.reload
+    expect( genus.complete_species_count ).to eq 1
+    es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
+    expect( es_genus.complete_species_count ).to eq 1
+  end
+end
+
+describe "complete_species_count" do
+  describe "when taxon is not complete" do
+    it "should be nil if no complete ancestor" do
+      t = Taxon.make!
+      expect( t.complete_species_count ).to be_nil
+    end
+    it "should be set if complete ancestor exists" do
+      ancestor = Taxon.make!( complete: true, rank: Taxon::FAMILY )
+      t = Taxon.make!( parent: ancestor, rank: Taxon::GENUS )
+      expect( t.complete_species_count ).not_to be_nil
+      expect( t.complete_species_count ).to eq 0
+    end
+  end
+  describe "when taxon is complete" do
+    let(:complete_taxon) { Taxon.make!( complete: true, rank: Taxon::FAMILY ) }
+    it "should count species" do
+      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      expect( complete_taxon.complete_species_count ).to eq 1
+    end
+    it "should not count genera" do
+      genus = Taxon.make!( rank: Taxon::GENUS, parent: complete_taxon )
+      expect( complete_taxon.complete_species_count ).to eq 0
+    end
+    it "should not count hybrids" do
+      hybrid = Taxon.make!( rank: Taxon::HYBRID, parent: complete_taxon )
+      expect( complete_taxon.complete_species_count ).to eq 0
+    end
+    it "should not count extinct species" do
+      extinct_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      ConservationStatus.make!( taxon: extinct_species, iucn: Taxon::IUCN_EXTINCT, status: "extinct" )
+      extinct_species.reload
+      expect( extinct_species.conservation_statuses.first.iucn ).to eq Taxon::IUCN_EXTINCT
+      expect( extinct_species.conservation_statuses.first.place ).to be_blank
+      expect( complete_taxon.complete_species_count ).to eq 0
+    end
+    it "should count species with place-specific non-extinct conservation statuses" do
+      cs_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      ConservationStatus.make!( taxon: cs_species, iucn: Taxon::IUCN_VULNERABLE, status: "VU" )
+      cs_species.reload
+      expect( cs_species.conservation_statuses.first.iucn ).to eq Taxon::IUCN_VULNERABLE
+      expect( cs_species.conservation_statuses.first.place ).to be_blank
+      expect( complete_taxon.complete_species_count ).to eq 1
+    end
+    it "should not count inactive taxa" do
+      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, is_active: false )
+      expect( complete_taxon.complete_species_count ).to eq 0
     end
   end
 end

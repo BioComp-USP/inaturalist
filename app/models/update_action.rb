@@ -24,7 +24,17 @@ class UpdateAction < ActiveRecord::Base
   end
 
   def bulk_insert_subscribers(subscriber_ids)
-    values = subscriber_ids.map{ |id| "(#{self.id},#{id})" }
+    potential_subscriber_ids = subscriber_ids
+    notifier_user = notifier if notifier.is_a?( User )
+    notifier_user ||= notifier.try(:user)
+    if notifier_user
+      excepted_user_ids = UserBlock.
+        where( "user_id = ? OR blocked_user_id = ?", notifier_user.id, notifier_user.id ).
+        pluck(:user_id, :blocked_user_id).flatten.uniq
+      excepted_user_ids += UserMute.where( muted_user_id: notifier_user.id ).pluck(:user_id)
+      potential_subscriber_ids = potential_subscriber_ids - excepted_user_ids.uniq
+    end
+    values = potential_subscriber_ids.compact.map{ |id| "(#{self.id},#{id})" }
     return if values.blank?
     sql = "INSERT INTO update_subscribers (update_action_id, subscriber_id) " +
           "VALUES #{ values.join(",") }"
@@ -50,7 +60,6 @@ class UpdateAction < ActiveRecord::Base
 
   def self.email_updates
     # site will be looked up tons of times, so store it in CONFIG
-    CONFIG.site = Site.find_by_id(CONFIG.site_id)
     start_time = 1.day.ago.utc
     end_time = Time.now.utc
     email_count = 0

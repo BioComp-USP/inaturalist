@@ -16,8 +16,15 @@ const STOP_AGREEING_WITH_OBSERVATION = "stop_agreeing_with_observation";
 
 function postIdentification( params ) {
   return function ( dispatch ) {
-    const body = Object.assign( {}, params );
-    body.user_id = 1;
+    const body = { identification: Object.assign( {}, params ) };
+    if ( body.identification.observation ) {
+      body.identification.observation_id = body.identification.observation_id || body.identification.observation.id;
+      delete body.identification.observation;
+    }
+    if ( body.identification.taxon ) {
+      body.identification.taxon_id = body.identification.taxon_id || body.identification.taxon.id;
+      delete body.identification.taxon;
+    }
     return inatjs.identifications.create( body ).catch( e => {
       dispatch( showAlert(
         I18n.t( "failed_to_save_record" ),
@@ -67,7 +74,10 @@ function agreeWithCurrentObservation( ) {
   return function ( dispatch, getState ) {
     const s = getState( );
     if ( s.config.blind ) {
-      return;
+      return null;
+    }
+    if ( s.currentObservation.tab !== "info" ) {
+      return null;
     }
     const currentObservation = s.currentObservation.observation;
     if ( !currentObservation || !currentObservation.id || !currentObservation.taxon ) {

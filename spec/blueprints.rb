@@ -48,6 +48,13 @@ Comment.blueprint do
   parent { Observation.make! }
 end
 
+CompleteSet.blueprint do
+  taxon { Taxon.make! }
+  place { Place.make! }
+  user { User.make! }
+  is_active { true }
+end
+
 ConservationStatus.blueprint do
   user { User.make! }
   taxon { Taxon.make! }
@@ -470,6 +477,11 @@ User.blueprint do
   created_at { 5.days.ago.to_s(:db) }
   state { "active" }
   time_zone { "Pacific Time (US & Canada)" }
+end
+
+UserBlock.blueprint do
+  user { User.make! }
+  blocked_user { User.make! }
 end
 
 WikiPage.blueprint do

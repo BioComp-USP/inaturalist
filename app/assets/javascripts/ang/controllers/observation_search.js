@@ -59,7 +59,7 @@ function( ObservationsFactory, PlacesFactory, TaxaFactory, shared, $scope, $root
   $scope.possibleSubviews = { observations: [ "map", "grid", "table" ] };
   $scope.possibleFields = [ "iconic_taxa", "month", "swlat", "swlng",
     "nelat", "nelng", "place_id", "taxon_id", "page", "view", "subview",
-    "locale", "preferred_place_id" ];
+    "locale", "preferred_place_id", "ident_user_id" ];
   $scope.defaultView = "observations";
   $scope.defaultSubview = "map";
   $rootScope.mapType = "map";
@@ -353,7 +353,7 @@ function( ObservationsFactory, PlacesFactory, TaxaFactory, shared, $scope, $root
   $scope.extendBrowserLocation = function( options ) {
     var params = _.extend( { }, $location.search( ), options );
     params = _.omit( params, function( value, key, object ) {
-      return _.isEmpty( value) && !_.isBoolean( value ) && !_.isNumber( value );
+      return _.isEmpty( value ) && !_.isBoolean( value ) && !_.isNumber( value );
     });
     return "?" + $.param( params );
   };
@@ -528,6 +528,9 @@ function( ObservationsFactory, PlacesFactory, TaxaFactory, shared, $scope, $root
     // to hide the `Redo Search` button until the map moves
     if( processedParams.place_id || processedParams.swlat ) {
       $scope.hideRedoSearch = true;
+    }
+    if( _.isEqual( $scope.defaultProcessedParams, processedParamsWithoutLocale ) ) {
+      processedParams.ttl = 3600;
     }
     var statsParams = _.omit( processedParams, [ "order_by", "order", "page" ] );
     var searchParams = _.extend( { }, processedParams, {

@@ -12,8 +12,6 @@ class ControlledTerm < ActiveRecord::Base
   has_many :attrs, through: :controlled_term_value_attrs, source: :controlled_attribute
   has_many :value_annotations, class_name: "Annotation", foreign_key: :controlled_value_id
   has_many :attribute_annotations, class_name: "Annotation", foreign_key: :controlled_attribute_id
-  # belongs_to :valid_within_taxon, foreign_key: :valid_within_clade,
-  #   class_name: "Taxon"
   belongs_to :user
   has_many :controlled_term_taxa, inverse_of: :controlled_term, dependent: :destroy
   has_many :taxa, -> { where ["controlled_term_taxa.exception = ?", false] }, through: :controlled_term_taxa
@@ -22,6 +20,7 @@ class ControlledTerm < ActiveRecord::Base
     through: :controlled_term_taxa,
     source: :taxon
 
+  after_commit :index_attributes
   scope :active, -> { where(active: true) }
   scope :attributes, -> { where(is_value: false) }
   scope :values, -> { where(is_value: true) }
@@ -107,6 +106,12 @@ class ControlledTerm < ActiveRecord::Base
     return false if excepted_taxa.detect{ |taxon| candidate_taxon.has_ancestor_taxon_id( taxon.id ) }
     return true if taxa.blank? || taxa.detect{ |taxon| candidate_taxon.has_ancestor_taxon_id( taxon.id ) }
     false
+  end
+
+  def index_attributes
+    return true unless attrs.exists?
+    ControlledTerm.elastic_index!( ids: attr_ids )
+    true
   end
 
 end
