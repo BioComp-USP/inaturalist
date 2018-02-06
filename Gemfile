@@ -1,6 +1,6 @@
 source 'http://rubygems.org'
 
-gem 'rails', "~> 4.2.6"
+gem 'rails', "~> 4.2.7.1"
 
 gem 'apipie-rails'
 gem 'aasm'
@@ -37,7 +37,7 @@ gem 'devise-encryptable'
 gem 'devise-i18n'
 gem 'devise_suspendable'
 gem 'diffy'
-gem 'doorkeeper'
+gem 'doorkeeper', "~> 4.2.0"
 gem 'dynamic_form'
 gem 'exifr'
 gem 'fastimage'
@@ -55,11 +55,11 @@ gem 'i18n-inflector-rails'
 gem 'i18n-js', :git => 'https://github.com/fnando/i18n-js.git'
 gem 'irwi', :git => 'https://github.com/Programatica/irwi.git'
 gem 'json'
-gem 'jquery-rails'
+gem 'jquery-rails', "~> 4.0.4"
 gem 'koala'
 gem 'dalli'
 gem 'mocha', :require => false
-gem 'nokogiri'
+gem "nokogiri", "~> 1.8.1"
 gem "non-stupid-digest-assets"
 gem "omniauth"
 gem "omniauth-oauth2", " 1.3.1"
@@ -70,7 +70,7 @@ gem "omniauth-google-oauth2", "~> 0.4.1"
 gem 'omniauth-soundcloud', git: "https://github.com/ratafire/omniauth-soundcloud.git"
 gem 'omniauth-twitter'
 gem 'objectify-xml', :require => 'objectify_xml'
-gem "paperclip", "4.2.1"
+gem "paperclip", "4.2.2"
 gem 'delayed_paperclip', git: 'https://github.com/jrgifford/delayed_paperclip.git',
   ref: '8f11882ee945bf56affe8df4f591e5171581aac3'
 gem 'pg'
@@ -79,7 +79,6 @@ gem 'rack-google-analytics', :git => 'https://github.com/kueda/rack-google-analy
 gem "rack-mobile-detect"
 gem 'rails-observers'
 gem 'rakismet'
-gem 'RedCloth'
 gem 'rest-client', :require => 'rest_client'
 gem 'rinku', :require => 'rails_rinku'
 gem 'riparian', :git => 'https://github.com/inaturalist/riparian.git'
@@ -99,7 +98,7 @@ gem 'will_paginate'
 gem 'whenever', :require => false
 gem 'ya2yaml'
 gem 'yui-compressor'
-gem 'xmp', :git => 'https://github.com/kueda/xmp.git'
+gem 'xmp', "~> 0.2.1", git: 'https://github.com/kueda/xmp.git'
 gem 'statsd-ruby', :require => 'statsd'
 # these need to be loaded after will_paginate
 gem 'elasticsearch-model', git: 'https://github.com/elasticsearch/elasticsearch-rails.git'
@@ -132,8 +131,5 @@ group :test do
   gem "rspec", "~> 3.4.0"
   gem "rspec-rails", "~> 3.4.2"
   gem "rspec-html-matchers"
-  gem 'cucumber-rails', require: false
-  gem 'selenium-webdriver'
-  gem "chromedriver-helper"
   gem "webmock"
 end

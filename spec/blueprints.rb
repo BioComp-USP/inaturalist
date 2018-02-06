@@ -188,6 +188,10 @@ Message.blueprint do
   body { Faker::Lorem.paragraph }
 end
 
+MushroomObserverImportFlowTask.blueprint do
+  user { User.make! }
+end
+
 OauthApplication.blueprint do
   name { Faker::Lorem.sentence }
   owner { User.make }
@@ -378,12 +382,17 @@ end
 
 TaxonChange.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
+end
+
+TaxonCurator.blueprint do
+  taxon { Taxon.make! }
+  user { make_curator }
 end
 
 TaxonDrop.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
 end
 
 TaxonLink.blueprint do
@@ -400,7 +409,7 @@ end
 
 TaxonMerge.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
 end
 
 TaxonName.blueprint do
@@ -426,17 +435,17 @@ end
 
 TaxonSplit.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
 end
 
 TaxonStage.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
 end
 
 TaxonSwap.blueprint do
   source { Source.make! }
-  user { User.make! }
+  user { make_curator }
 end
 
 Trip.blueprint do

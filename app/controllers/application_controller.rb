@@ -13,6 +13,7 @@ class ApplicationController < ActionController::Base
   around_filter :set_time_zone
   before_filter :return_here, :only => [:index, :show, :by_login]
   before_filter :return_here_from_url
+  before_filter :preload_user_preferences
   before_filter :user_logging
   before_filter :check_user_last_active
   after_filter :user_request_logging
@@ -23,7 +24,11 @@ class ApplicationController < ActionController::Base
   before_filter :draft_site_requires_admin
   before_filter :set_ga_trackers
   before_filter :set_request_locale
+  before_filter :check_preferred_place
   before_filter :sign_out_spammers
+
+  # /ping should skip all before filters and just render
+  skip_filter *_process_action_callbacks.map(&:filter), only: :ping
 
   PER_PAGES = [10,30,50,100,200]
   HEADER_VERSION = 21
@@ -40,6 +45,10 @@ class ApplicationController < ActionController::Base
       session[:locale] = params[:locale]
     end
     redirect_back_or_default( root_url )
+  end
+
+  def ping
+    render json: { status: "available" }
   end
 
   private
@@ -94,10 +103,60 @@ class ApplicationController < ActionController::Base
     # use params[:locale] for single-request locale settings,
     # otherwise use the session, user's preferred, or site default,
     # or application default locale
-    I18n.locale = params[:locale] || session[:locale] ||
-      current_user.try(:locale) || @site.locale || I18n.default_locale
+    locale = params[:locale]
+    locale = session[:locale] if locale.blank?
+    locale = current_user.try(:locale) if locale.blank?
+    locale = @site.locale if locale.blank?
+    locale = locale_from_header if locale.blank?
+    locale = I18n.default_locale if locale.blank?
+    I18n.locale = locale
     unless I18N_SUPPORTED_LOCALES.include?( I18n.locale.to_s )
       I18n.locale = I18n.default_locale
+    end
+    true
+  end
+
+  def locale_from_header
+    return if request.env["HTTP_ACCEPT_LANGUAGE"].blank?
+    http_locale = request.env["HTTP_ACCEPT_LANGUAGE"].
+      split(/[;,]/).select{ |l| l =~ /^[a-z-]+$/i }.first
+    return if http_locale.blank?
+    lang, region = http_locale.split( "-" ).map(&:downcase)
+    return lang if region.blank?
+    # These re-mappings will cause problem if these regions ever get
+    # translated, so be warned. Showing zh-TW for people in Hong Kong is
+    # *probably* fine, but Brazilian Portuguese for people in Portugal might
+    # be a bigger problem.
+    if lang == "es" && region == "xl"
+      region = "mx"
+    elsif lang == "zh" && region == "hk"
+      region = "tw"
+    elsif lang == "pt" && region == "pt"
+      region = "br"
+    end
+    locale = "#{lang.downcase}-#{region.upcase}"
+    if I18N_SUPPORTED_LOCALES.include?( locale )
+      locale
+    elsif I18N_SUPPORTED_LOCALES.include?( lang )
+      lang
+    end
+  end
+
+  def check_preferred_place
+    return true unless current_user
+    return true if current_user.prefers_no_place?
+    return true unless session[:potential_place].blank?
+    if current_user.latitude && current_user.longitude && current_user.place.blank?
+      potential_place = Place.
+        containing_lat_lng( current_user.latitude, current_user.longitude ).
+        where( admin_level: Place::COUNTRY_LEVEL ).first
+      if potential_place
+        place_name = t( "places_name.#{potential_place.name.to_s.parameterize.underscore}", default: potential_place.name )
+        session[:potential_place] = {
+          id: potential_place.id,
+          name: place_name == "United States" ? "the United States" : place_name
+        }
+      end
     end
     true
   end
@@ -210,7 +269,13 @@ class ApplicationController < ActionController::Base
     return true if params[:return_to].blank?
     session[:return_to] = params[:return_to]
   end
-  
+
+  def preload_user_preferences
+    if logged_in?
+      User.preload_associations(current_user, :stored_preferences)
+    end
+  end
+
   def user_logging
     return true unless logged_in?
     Rails.logger.info "  User: #{current_user.login} #{current_user.id}"
@@ -226,7 +291,9 @@ class ApplicationController < ActionController::Base
     if current_user
       # there is a current_user, so that user is active
       if current_user.last_active.nil? || current_user.last_active != Date.today
-        current_user.update_column(:last_active, Date.today)
+        current_user.last_active = Date.today
+        current_user.last_ip = Logstasher.ip_from_request_env( request.env )
+        current_user.save
       end
       # since they are active, unsuspend any stopped subscriptions
       if current_user.subscriptions_suspended_at

@@ -431,7 +431,8 @@ iNaturalist.Map.createMap = function(options) {
     mapTypeId: google.maps.MapTypeId.TERRAIN,
     streetViewControl: false,
     backgroundColor: iNaturalist.Map.MAP_BACKGROUND_COLOR,
-    clickableIcons: false
+    clickableIcons: false,
+    gestureHandling: "greedy"
   }, options);
   
   var map;

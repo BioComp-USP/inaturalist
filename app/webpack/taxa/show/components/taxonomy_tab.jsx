@@ -1,9 +1,10 @@
 import React, { PropTypes } from "react";
 import { Grid, Row, Col, OverlayTrigger, Popover } from "react-bootstrap";
 import _ from "lodash";
-import { urlForTaxon } from "../../shared/util";
+import { urlForTaxon, RANK_LEVELS } from "../../shared/util";
 import SplitTaxon from "../../../shared/components/split_taxon";
 import UserText from "../../../shared/components/user_text";
+import UserWithIcon from "../../../observations/show/components/user_with_icon";
 
 const TaxonomyTab = ( {
   taxon,
@@ -12,9 +13,13 @@ const TaxonomyTab = ( {
   names,
   showNewTaxon,
   allChildrenShown,
-  toggleAllChildrenShown
+  toggleAllChildrenShown,
+  currentUser
 } ) => {
   const currentTaxon = Object.assign( { }, taxon );
+  const viewerIsCurator = currentUser && currentUser.roles && (
+    currentUser.roles.indexOf( "admin" ) >= 0 || currentUser.roles.indexOf( "curator" ) >= 0
+  );
   const tree = [];
   if ( taxon ) {
     if ( taxon.ancestors ) {
@@ -39,7 +44,7 @@ const TaxonomyTab = ( {
         const isTaxon = t.id === taxon.id;
         const isDescendant = t.ancestor_ids && t.ancestor_ids.indexOf( taxon.id ) >= 0;
         const shouldLinkToTaxon = !isRoot && !isTaxon;
-        const isComplete = isTaxon && _.isNumber( t.complete_species_count );
+        const isComplete = isTaxon && taxon.complete_rank && taxon.rank_level > RANK_LEVELS[taxon.complete_rank];
         const isHidable = isDescendant && ( t.rank === "hybrid" || !t.is_active || t.extinct );
         const numChildren = ( t.children || [] ).length;
         const numHidableChildren = _.filter( t.children || [], c => (
@@ -72,6 +77,7 @@ const TaxonomyTab = ( {
                   taxon={t}
                   url={shouldLinkToTaxon ? urlForTaxon( t ) : null}
                   forceRank
+                  user={ currentUser }
                   onClick={ e => {
                     if ( !shouldLinkToTaxon ) return true;
                     if ( e.metaKey || e.ctrlKey ) return true;
@@ -83,7 +89,7 @@ const TaxonomyTab = ( {
                 { isComplete ? (
                   <div className="inlineblock taxonomy-complete-notice">
                     <div className="label-complete">
-                      { I18n.t( "all_species_added_to_the_database" ) }
+                      { I18n.t( `all_rank_added_to_the_database.${taxon.complete_rank || "species"}` ) }
                     </div>
                     <OverlayTrigger
                       trigger="click"
@@ -148,6 +154,16 @@ const TaxonomyTab = ( {
     </ul>
   );
   const sortedNames = _.sortBy( names, n => [n.lexicon, n.name] );
+  let taxonCurators;
+  if ( taxon.taxonCurators && taxon.taxonCurators.length > 0 ) {
+    taxonCurators = (
+      <div>
+        <h4>{ I18n.t( "taxon_curators" ) }</h4>
+        <UserText text={ I18n.t( "views.taxa.show.about_taxon_curators_desc" ).replace( /\n+/gm, " " )} truncate={400} />
+        { _.map( taxon.taxonCurators, tc => <UserWithIcon user={ tc.user } key={ `taxon-curators-${tc.user.id}` } /> ) }
+      </div>
+    );
+  }
   return (
     <Grid className="TaxonomyTab">
       <Row className="tab-section">
@@ -178,6 +194,7 @@ const TaxonomyTab = ( {
                   </a>
                 </li>
               </ul>
+              { taxonCurators }
             </Col>
           </Row>
         </Col>
@@ -192,7 +209,9 @@ const TaxonomyTab = ( {
                   <tr>
                     <th>{ I18n.t( "language_slash_type" ) }</th>
                     <th>{ I18n.t( "name" ) }</th>
-                    <th>{ I18n.t( "action" ) }</th>
+                    { currentUser ? (
+                      <th>{ I18n.t( "action" ) }</th>
+                    ) : null }
                   </tr>
                 </thead>
                 <tbody>
@@ -209,7 +228,13 @@ const TaxonomyTab = ( {
                       >
                         { n.name }
                       </td>
-                      <td><a href={`/taxon_names/${n.id}/edit`}>{ I18n.t( "edit" ) }</a></td>
+                      { currentUser ? (
+                        <td>
+                          { viewerIsCurator || n.creator_id === currentUser.id ? (
+                            <a href={`/taxon_names/${n.id}/edit`}>{ I18n.t( "edit" ) }</a>
+                          ) : null }
+                        </td>
+                      ) : null }
                     </tr>
                   ) ) }
                 </tbody>
@@ -253,7 +278,8 @@ TaxonomyTab.propTypes = {
   names: PropTypes.array,
   showNewTaxon: PropTypes.func,
   allChildrenShown: PropTypes.bool,
-  toggleAllChildrenShown: PropTypes.func
+  toggleAllChildrenShown: PropTypes.func,
+  currentUser: PropTypes.object
 };
 
 TaxonomyTab.defaultProps = {

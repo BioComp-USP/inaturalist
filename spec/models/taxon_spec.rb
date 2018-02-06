@@ -790,10 +790,10 @@ describe Taxon, "moving" do
   end
 
   it "should update community taxa" do
-    fam = Taxon.make!(:rank => "family")
-    subfam = Taxon.make!(:rank => "subfamily", :parent => fam)
-    gen = Taxon.make!(:rank => "genus", :parent => fam)
-    sp = Taxon.make!(:rank => "species", :parent => gen)
+    fam = Taxon.make!( name: "_fam 1", rank: "family")
+    subfam = Taxon.make!( name: "_subfam 1", rank: "subfamily", parent: fam )
+    gen = Taxon.make!( name: "_gen 1", rank: "genus", parent: fam )
+    sp = Taxon.make!( name: "_sp 1", rank: "species", parent: gen )
     o = Observation.make!
     i1 = Identification.make!(:observation => o, :taxon => subfam)
     i2 = Identification.make!(:observation => o, :taxon => sp)
@@ -805,7 +805,7 @@ describe Taxon, "moving" do
       gen.update_attributes(:parent => subfam)
     end
     o.reload
-    expect(o.taxon).to eq subfam
+    expect(o.taxon).to eq sp
   end
 
   it "should create TaxonAncestors" do
@@ -1085,19 +1085,28 @@ describe Taxon, "leading_name" do
 end
 
 describe Taxon, "editable_by?" do
-  before { load_test_taxa }
   let(:admin) { make_admin }
   let(:curator) { make_curator }
-  it "should always be editable by admins" do
-    Taxon.all.each do |t|
-      expect( t ).to be_editable_by( admin )
-    end
+  it "should be editable by admins if class" do
+    expect( Taxon.make!( rank: Taxon::CLASS ) ).to be_editable_by( admin )
   end
   it "should be editable by curators if below order" do
-    expect( @Calypte ).to be_editable_by( curator )
+    taxon = Taxon.make!( rank: Taxon::FAMILY )
+    expect( taxon ).to be_editable_by( curator )
   end
   it "should not be editable by curators if order or above" do
-    expect( @Aves ).not_to be_editable_by( curator )
+    expect( Taxon.make!( rank: Taxon::CLASS ) ).not_to be_editable_by( curator )
+  end
+  describe "complete taxa" do
+    let(:taxon) { Taxon.make!( rank: Taxon::GENUS, complete: true ) }
+    it "should be editable by taxon curators of that taxon" do
+      tc = TaxonCurator.make!( taxon: taxon )
+      expect( taxon ).to be_editable_by( tc.user )
+    end
+    it "should be editable by other site curators" do
+      tc = TaxonCurator.make!( taxon: taxon )
+      expect( taxon ).to be_editable_by( curator )
+    end
   end
 end
 
@@ -1150,11 +1159,160 @@ describe "complete" do
     Delayed::Worker.new.work_off
     es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
     expect( es_genus.complete_species_count ).to be_nil
-    without_delay { family.update_attributes!( complete: true ) }
+    without_delay { family.update_attributes!( complete: true, current_user: make_admin ) }
     genus.reload
     expect( genus.complete_species_count ).to eq 1
     es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
     expect( es_genus.complete_species_count ).to eq 1
+  end
+  it "should destroy TaxonCurators when set to false" do
+    t = Taxon.make!( complete: true, current_user: make_admin )
+    tc = TaxonCurator.make!( taxon: t )
+    t.update_attributes( complete: false, current_user: make_admin )
+    expect( TaxonCurator.find_by_id( tc.id ) ).to be_nil
+  end
+  describe "when current_user" do
+    let(:superfamily) { Taxon.make!( rank: Taxon::SUPERFAMILY, complete: true ) }
+    let(:taxon_curator) { TaxonCurator.make!( taxon: superfamily ) }
+    let(:family) { Taxon.make!( rank: Taxon::FAMILY, parent: superfamily, current_user: taxon_curator.user ) }
+    let(:genus) { Taxon.make!( rank: Taxon::GENUS, parent: family, current_user: taxon_curator.user ) }
+    let(:species) { Taxon.make!( rank: Taxon::SPECIES, parent: genus, current_user: taxon_curator.user ) }
+    # Assume that it can only be blank if this is not happening in a
+    # controller... not the safest assumption, but assigning a user for every
+    # script that alters taxa is going to be tedious
+    describe "is blank" do
+      it "should prevent grafting to this taxon" do
+        t = Taxon.make( rank: Taxon::GENUS, parent: superfamily )
+        expect( t ).not_to be_valid
+      end
+      it "should prevent grafting to a descendant" do
+        t = Taxon.make( rank: Taxon::SPECIES, parent: genus )
+        expect( t ).not_to be_valid
+      end
+      it "should allow grafting to taxa beyond the complete_rank" do
+        superfamily.update_attributes( complete_rank: Taxon::GENUS, current_user: make_admin )
+        expect( Taxon.make( rank: Taxon::SUBSPECIES, parent: species ) ).to be_valid
+      end
+    end
+    describe "is not a TaxonCurator" do
+      let(:current_user) { User.make! }
+      it "should prevent grafting to this taxon" do
+        t = Taxon.make( rank: Taxon::GENUS, parent: superfamily, current_user: current_user )
+        expect( t ).not_to be_valid
+      end
+      it "should prevent grafting to a descendant" do
+        t = Taxon.make( rank: Taxon::SPECIES, parent: genus, current_user: current_user )
+        expect( t ).not_to be_valid
+      end
+      it "should prevent editing rank" do
+        superfamily.update_attributes( rank: "superduperfamily", current_user: current_user )
+        expect( superfamily ).not_to be_valid
+      end
+      it "should prevent editing is_active" do
+        superfamily.update_attributes( is_active: false, current_user: current_user )
+        expect( superfamily ).not_to be_valid
+      end
+      it "should prevent editing complete" do
+        superfamily.update_attributes( complete: false, current_user: current_user )
+        expect( superfamily ).not_to be_valid
+      end
+      it "should prevent editing complete_rank" do
+        superfamily.update_attributes( complete_rank: Taxon::SUBFAMILY, current_user: current_user )
+        expect( superfamily ).not_to be_valid
+      end
+      describe "and complete taxon has a complete_rank" do
+        before do
+          superfamily.update_attributes( complete_rank: Taxon::GENUS )
+        end
+        it "should allow grafting to taxa beyond the complete_rank" do
+          expect( Taxon.make( rank: Taxon::SUBSPECIES, parent: species, current_user: current_user ) ).to be_valid
+        end
+        it "should not allow grafting taxa beyond the complete_rank to the complete taxon" do
+          poorly_grafted_species = Taxon.make( rank: Taxon::SPECIES, current_user: current_user, parent: superfamily )
+          expect( poorly_grafted_species ).not_to be_valid
+        end
+        it "should not allow grafting taxa beyond the complete_rank to the taxa before the complete_rank" do
+          poorly_grafted_species = Taxon.make( rank: Taxon::SPECIES, current_user: current_user, parent: family )
+          expect( poorly_grafted_species ).not_to be_valid
+        end
+      end
+    end
+    describe "is a TaxonCurator" do
+      it "should allow grafting to this taxon" do
+        t = Taxon.make( rank: Taxon::GENUS, parent: superfamily, current_user: taxon_curator.user )
+        expect( t ).to be_valid
+      end
+      it "should allow grafting to a descendant" do
+        t = Taxon.make( rank: Taxon::SPECIES, parent: genus, current_user: taxon_curator.user )
+        expect( t ).to be_valid
+      end
+      it "should allow editing rank" do
+        superfamily.update_attributes( rank: "superduperfamily", current_user: taxon_curator.user )
+        expect( superfamily ).to be_valid
+      end
+      it "should allow editing is_active" do
+        superfamily.update_attributes( is_active: false, current_user: taxon_curator.user )
+        expect( superfamily ).to be_valid
+      end
+      it "should allow editing complete" do
+        superfamily.update_attributes( complete: false, current_user: taxon_curator.user )
+        expect( superfamily ).to be_valid
+      end
+      it "should allow editing complete_rank" do
+        superfamily.update_attributes( complete_rank: "subfamily", current_user: taxon_curator.user )
+        expect( superfamily ).to be_valid
+      end
+      describe "and complete taxon has a complete_rank" do
+        before do
+          superfamily.update_attributes( complete_rank: Taxon::GENUS )
+        end
+        it "should allow grafting to taxa beyond the complete_rank" do
+          expect( Taxon.make( rank: Taxon::SUBSPECIES, parent: species, current_user: taxon_curator.user ) ).to be_valid
+        end
+        it "should allow grafting taxa beyond the complete_rank to the complete taxon" do
+          poorly_grafted_species = Taxon.make( rank: Taxon::SPECIES, current_user: taxon_curator.user, parent: superfamily )
+          expect( poorly_grafted_species ).to be_valid
+        end
+        it "should allow grafting taxa beyond the complete_rank to the taxa before the complete_rank" do
+          poorly_grafted_species = Taxon.make( rank: Taxon::SPECIES, current_user: taxon_curator.user, parent: family )
+          expect( poorly_grafted_species ).to be_valid
+        end
+      end
+    end
+  end
+end
+
+describe "complete_rank" do
+  it "should reindex all descendants when changed" do
+    superfamily = Taxon.make!( rank: Taxon::SUPERFAMILY )
+    family = Taxon.make!( rank: Taxon::FAMILY, parent: superfamily )
+    genus = Taxon.make!( rank: Taxon::GENUS, parent: family )
+    species = Taxon.make!( rank: Taxon::SPECIES, parent: genus )
+    without_delay { superfamily.update_attributes!( complete: true ) }
+    Delayed::Worker.new.work_off
+    es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
+    es_family = Taxon.elastic_search( where: { id: family.id } ).results.results.first
+    expect( es_genus.complete_species_count ).to eq 1
+    without_delay { superfamily.update_attributes!( complete_rank: Taxon::GENUS ) }
+    genus.reload
+    family.reload
+    expect( genus.complete_species_count ).to be_nil
+    es_genus = Taxon.elastic_search( where: { id: genus.id } ).results.results.first
+    es_family = Taxon.elastic_search( where: { id: family.id } ).results.results.first
+    expect( es_genus.complete_species_count ).to be_nil
+  end
+  it "should not be above the rank of the taxon" do
+    t = Taxon.make( rank: Taxon::FAMILY, complete_rank: Taxon::SUPERFAMILY )
+    expect( t ).not_to be_valid
+  end
+  it "should remove TaxonCurators of taxa that are no longer one of the complete descendants" do
+    superfamily = Taxon.make!( rank: Taxon::SUPERFAMILY, complete: true )
+    taxon_curator = TaxonCurator.make!( taxon: superfamily )
+    family = Taxon.make!( rank: Taxon::FAMILY, parent: superfamily, current_user: taxon_curator.user )
+    genus = Taxon.make!( rank: Taxon::GENUS, parent: family, current_user: taxon_curator.user )
+    tc = TaxonCurator.make!( taxon: genus )
+    superfamily.update_attributes( complete_rank: Taxon::FAMILY )
+    expect( TaxonCurator.find_by_id( tc.id ) ).to be_nil
   end
 end
 
@@ -1166,27 +1324,37 @@ describe "complete_species_count" do
     end
     it "should be set if complete ancestor exists" do
       ancestor = Taxon.make!( complete: true, rank: Taxon::FAMILY )
-      t = Taxon.make!( parent: ancestor, rank: Taxon::GENUS )
+      taxon_curator = TaxonCurator.make!( taxon: ancestor )
+      t = Taxon.make!( parent: ancestor, rank: Taxon::GENUS, current_user: taxon_curator.user )
       expect( t.complete_species_count ).not_to be_nil
       expect( t.complete_species_count ).to eq 0
+    end
+    it "should be nil if complete ancestor exists but it is complete at a higher rank" do
+      superfamily = Taxon.make!( complete: true, rank: Taxon::SUPERFAMILY, complete_rank: Taxon::GENUS )
+      taxon_curator = TaxonCurator.make!( taxon: superfamily )
+      family = Taxon.make!( rank: Taxon::FAMILY, parent: superfamily, current_user: taxon_curator.user )
+      genus = Taxon.make!( rank: Taxon::GENUS, parent: family, current_user: taxon_curator.user )
+      species = Taxon.make!( rank: Taxon::SPECIES, parent: genus, current_user: taxon_curator.user )
+      expect( genus.complete_species_count ).to be_nil
     end
   end
   describe "when taxon is complete" do
     let(:complete_taxon) { Taxon.make!( complete: true, rank: Taxon::FAMILY ) }
+    let(:taxon_curator) { TaxonCurator.make!( taxon: complete_taxon ) }
     it "should count species" do
-      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, current_user: taxon_curator.user )
       expect( complete_taxon.complete_species_count ).to eq 1
     end
     it "should not count genera" do
-      genus = Taxon.make!( rank: Taxon::GENUS, parent: complete_taxon )
+      genus = Taxon.make!( rank: Taxon::GENUS, parent: complete_taxon, current_user: taxon_curator.user )
       expect( complete_taxon.complete_species_count ).to eq 0
     end
     it "should not count hybrids" do
-      hybrid = Taxon.make!( rank: Taxon::HYBRID, parent: complete_taxon )
+      hybrid = Taxon.make!( rank: Taxon::HYBRID, parent: complete_taxon, current_user: taxon_curator.user )
       expect( complete_taxon.complete_species_count ).to eq 0
     end
     it "should not count extinct species" do
-      extinct_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      extinct_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, current_user: taxon_curator.user )
       ConservationStatus.make!( taxon: extinct_species, iucn: Taxon::IUCN_EXTINCT, status: "extinct" )
       extinct_species.reload
       expect( extinct_species.conservation_statuses.first.iucn ).to eq Taxon::IUCN_EXTINCT
@@ -1194,7 +1362,7 @@ describe "complete_species_count" do
       expect( complete_taxon.complete_species_count ).to eq 0
     end
     it "should count species with place-specific non-extinct conservation statuses" do
-      cs_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon )
+      cs_species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, current_user: taxon_curator.user )
       ConservationStatus.make!( taxon: cs_species, iucn: Taxon::IUCN_VULNERABLE, status: "VU" )
       cs_species.reload
       expect( cs_species.conservation_statuses.first.iucn ).to eq Taxon::IUCN_VULNERABLE
@@ -1202,7 +1370,7 @@ describe "complete_species_count" do
       expect( complete_taxon.complete_species_count ).to eq 1
     end
     it "should not count inactive taxa" do
-      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, is_active: false )
+      species = Taxon.make!( rank: Taxon::SPECIES, parent: complete_taxon, is_active: false, current_user: taxon_curator.user )
       expect( complete_taxon.complete_species_count ).to eq 0
     end
   end

@@ -6,6 +6,8 @@
 @import "../shared/loading_spinner";
 @import "../shared/activity_item";
 @import "../shared/taxon_autocomplete";
+@import "../shared/user_with_icon";
+@import "../shared/disagreement_alert";
 @import "../../../../node_modules/react-image-gallery/styles/scss/image-gallery";
 @import "../../../../node_modules/react-bootstrap-datetimepicker/css/bootstrap-datetimepicker.min";
 
@@ -239,32 +241,6 @@ a.UserImage,
     width: 40px;
     height: 40px;
     border: 1px solid #B3B2B7;
-  }
-}
-
-.UserWithIcon {
-  .icon {
-    float: left;
-  }
-  .title {
-    font-size: 20px;
-    line-height: 22px;
-    a {
-      color: #000;
-    }
-  }
-  .subtitle {
-    margin-top: 5px;
-    line-height: 18px;
-    font-size: 15px;
-    i.fa-binoculars {
-      font-size: 12px;
-      color: $inat-green;
-      margin-right: 5px;
-    }
-    span {
-      vertical-align: text-top;
-    }
   }
 }
 
@@ -626,7 +602,7 @@ a.UserImage,
     }
     .SplitTaxon {
       white-space: normal;
-      a.sciname {
+      a.secondary-name {
         font-size: 20px;
         line-height: 24px;
         color: #747474;
@@ -637,6 +613,12 @@ a.UserImage,
         line-height: 36px;
         color: #000;
         white-space: normal;
+      }
+      &.genus .comname.secondary-name,
+      &.species .comname.secondary-name,
+      &.subspecies .comname.secondary-name,
+      &.variety .comname.secondary-name {
+        margin-left: 0.25em;
       }
     }
   }
@@ -2008,7 +1990,7 @@ h3, h4 {
       }
       td {
         padding: 2px 8px;
-        .sciname {
+        .secondary-name {
           font-size: 12px;
         }
         .display-name {
@@ -2463,6 +2445,12 @@ body > div > [role="dialog"] .easyzoom > a > img {
   }
 }
 
+.UserWithIcon {
+  .title {
+    font-size: 20px;
+    line-height: 22px;
+  }
+}
 
 
 .loading_spinner {
@@ -2501,8 +2489,6 @@ body > div > [role="dialog"] .easyzoom > a > img {
 .observations.infowindow .observation {
   width: 245px;
 }
-
-
 
 
 @media (max-width: 1000px) {

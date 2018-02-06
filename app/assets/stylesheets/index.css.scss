@@ -7,6 +7,7 @@
 *= require flickr_photos
 *= require projects
 */
+@import "colors";
 body {
   margin: 0;
   padding: 0;
@@ -22,6 +23,16 @@ html, body {height: 100%;}
 }
 #bodywrapper:after { height: 260px; }
 #wrapper { min-height: 500px;}
+
+#full-width-notice {
+  padding: 10px;
+  text-align: center;
+  margin-top: -20px;
+  margin-bottom: 20px;
+  .btn {
+    margin-top: -1px;
+  }
+}
 
 .gm-style .gm-style-iw, .gm-style .gm-style-iw a, .gm-style .gm-style-iw span, .gm-style .gm-style-iw label, 
 .gm-style .gm-style-iw div, .gm-style div, .gm-style span, .gm-style label, .gm-style a {
@@ -914,12 +925,44 @@ ul.leafylist li li:first-child {
 #footer .social-media-link.facebook:before {
   content: "\f09a";
 }
-#inatnotice { color: #aaa; background-color: #666; padding-top: 20px; padding-bottom: 20px; }
-#inatnotice a {
-  color: white;
-}
-#inatnotice a:first-child {
-  font-weight: bold;
+#inatnotice {
+  color: #aaa;
+  background-color: #666;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 0px;
+
+  .links {
+    line-height: 1.42857143;
+    padding: 10px 0px;
+    a {
+      color: white;
+    }
+    a:first-child {
+      font-weight: bold;
+    }
+  }
+  .btn {
+    background-color: #484848;
+    color: white;
+    border-color: #8D8D8D;
+    margin-top: 3px;
+    i {
+      color: $inat-green;
+      font-size: 20px;
+      line-height: 0;
+      float: left;
+      margin-right: 2px;
+      position: relative;
+      top: -1px;
+      left: -2px;
+    }
+    .caret {
+      margin-left: 2px;
+      position: relative;
+      bottom: 1px;
+    }
+  }
 }
 
 #mobiletogglelink {font-size: 400%;margin-bottom:10%;}
@@ -1171,29 +1214,43 @@ a.csvlink{background-image:image-url('silk/table.png');}
 .taxon_links .taxon.Actinopterygii   { color: #1E90FF;  background-image: image-url('iconic_taxa/actinopterygii-15px.png'); }
 .taxon_links .taxon.Chromista        { color: #993300;  background-image: image-url('iconic_taxa/chromista-15px.png'); }
 
-.taxon.Unknown a          { color: #aaaaaa;  }
-.taxon.Protozoa a         { color: #691776;  }
-.taxon.Plantae a          { color: #73AC13;  }
-.taxon.Fungi a            { color: DeepPink; }
-.taxon.Animalia a         { color: #1E90FF;  }
-.taxon.Mollusca a         { color: #FF4500;  }
-.taxon.Arachnida a        { color: #FF4500;  }
-.taxon.Insecta a          { color: #FF4500;  }
-.taxon.Amphibia a         { color: #1E90FF;  }
-.taxon.Reptilia a         { color: #1E90FF;  }
-.taxon.Aves a             { color: #1E90FF;  }
-.taxon.Mammalia a         { color: #1E90FF;  }
-.taxon.Actinopterygii a   { color: #1E90FF;  }
-.taxon.Chromista a        { color: #993300;  }
+.taxon.Unknown a,
+.taxon.Unknown .display_name          { color: #aaaaaa;  }
+.taxon.Protozoa a,
+.taxon.Protozoa .display_name         { color: #691776;  }
+.taxon.Plantae a,
+.taxon.Plantae .display_name          { color: #73AC13;  }
+.taxon.Fungi a,
+.taxon.Fungi .display_name            { color: DeepPink; }
+.taxon.Animalia a,
+.taxon.Animalia .display_name         { color: #1E90FF;  }
+.taxon.Mollusca a,
+.taxon.Mollusca .display_name         { color: #FF4500;  }
+.taxon.Arachnida a,
+.taxon.Arachnida .display_name        { color: #FF4500;  }
+.taxon.Insecta a,
+.taxon.Insecta .display_name          { color: #FF4500;  }
+.taxon.Amphibia a,
+.taxon.Amphibia .display_name         { color: #1E90FF;  }
+.taxon.Reptilia a,
+.taxon.Reptilia .display_name         { color: #1E90FF;  }
+.taxon.Aves a,
+.taxon.Aves .display_name             { color: #1E90FF;  }
+.taxon.Mammalia a,
+.taxon.Mammalia .display_name         { color: #1E90FF;  }
+.taxon.Actinopterygii a,
+.taxon.Actinopterygii .display_name   { color: #1E90FF;  }
+.taxon.Chromista a,
+.taxon.Chromista .display_name        { color: #993300;  }
 
-.taxon.has-com-name .sciname { 
+.taxon.has-com-name .secondary-name { 
   color: #aaa;
   white-space: nowrap;
 }
-.taxon.has-com-name .sciname:before { content: '('; display: inline-block; }
-.taxon.has-com-name .sciname:after { content: ')'; display: inline-block; }
-.taxon.has-com-name.no-parens .sciname:before { content: ''; display: inline-block; }
-.taxon.has-com-name.no-parens .sciname:after { content: ''; display: inline-block; }
+.taxon.has-com-name .secondary-name:before { content: '('; display: inline-block; }
+.taxon.has-com-name .secondary-name:after { content: ')'; display: inline-block; }
+.taxon.has-com-name.no-parens .secondary-name:before { content: ''; display: inline-block; }
+.taxon.has-com-name.no-parens .secondary-name:after { content: ''; display: inline-block; }
 .taxon .altname { color: #aaa; }
 
 /* Users table */
@@ -2046,4 +2103,8 @@ user-icon .icon-person:before {
 }
 .ui-dialog.confirm-modal * {
   outline: none;
+}
+
+.g-recaptcha {
+  margin-bottom: 15px;
 }

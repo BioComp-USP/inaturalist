@@ -1303,7 +1303,8 @@ CREATE TABLE flow_tasks (
     redirect_url character varying(255),
     created_at timestamp without time zone NOT NULL,
     updated_at timestamp without time zone NOT NULL,
-    exception text
+    exception text,
+    unique_hash character varying
 );
 
 
@@ -3837,7 +3838,8 @@ CREATE TABLE taxa (
     locked boolean DEFAULT false NOT NULL,
     conservation_status_source_identifier integer,
     is_active boolean DEFAULT true NOT NULL,
-    complete boolean
+    complete boolean,
+    complete_rank character varying
 );
 
 
@@ -3941,6 +3943,38 @@ ALTER SEQUENCE taxon_changes_id_seq OWNED BY taxon_changes.id;
 
 
 --
+-- Name: taxon_curators; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE taxon_curators (
+    id integer NOT NULL,
+    taxon_id integer,
+    user_id integer,
+    created_at timestamp without time zone NOT NULL,
+    updated_at timestamp without time zone NOT NULL
+);
+
+
+--
+-- Name: taxon_curators_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE taxon_curators_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: taxon_curators_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE taxon_curators_id_seq OWNED BY taxon_curators.id;
+
+
+--
 -- Name: taxon_descriptions; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -3948,7 +3982,10 @@ CREATE TABLE taxon_descriptions (
     id integer NOT NULL,
     taxon_id integer,
     locale character varying(255),
-    body text
+    body text,
+    provider character varying,
+    provider_taxon_id character varying,
+    url character varying
 );
 
 
@@ -4492,7 +4529,8 @@ CREATE TABLE users (
     icon_file_name character varying,
     icon_content_type character varying,
     icon_file_size integer,
-    icon_updated_at timestamp without time zone
+    icon_updated_at timestamp without time zone,
+    search_place_id integer
 );
 
 
@@ -4655,6 +4693,44 @@ CREATE SEQUENCE wiki_pages_id_seq
 --
 
 ALTER SEQUENCE wiki_pages_id_seq OWNED BY wiki_pages.id;
+
+
+--
+-- Name: year_statistics; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE year_statistics (
+    id integer NOT NULL,
+    user_id integer,
+    year integer,
+    data json,
+    created_at timestamp without time zone,
+    updated_at timestamp without time zone,
+    site_id integer,
+    shareable_image_file_name character varying,
+    shareable_image_content_type character varying,
+    shareable_image_file_size integer,
+    shareable_image_updated_at timestamp without time zone
+);
+
+
+--
+-- Name: year_statistics_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE year_statistics_id_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+
+--
+-- Name: year_statistics_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE year_statistics_id_seq OWNED BY year_statistics.id;
 
 
 --
@@ -5302,6 +5378,13 @@ ALTER TABLE ONLY taxon_changes ALTER COLUMN id SET DEFAULT nextval('taxon_change
 
 
 --
+-- Name: taxon_curators id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY taxon_curators ALTER COLUMN id SET DEFAULT nextval('taxon_curators_id_seq'::regclass);
+
+
+--
 -- Name: taxon_descriptions id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -5432,6 +5515,13 @@ ALTER TABLE ONLY wiki_page_versions ALTER COLUMN id SET DEFAULT nextval('wiki_pa
 --
 
 ALTER TABLE ONLY wiki_pages ALTER COLUMN id SET DEFAULT nextval('wiki_pages_id_seq'::regclass);
+
+
+--
+-- Name: year_statistics id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY year_statistics ALTER COLUMN id SET DEFAULT nextval('year_statistics_id_seq'::regclass);
 
 
 --
@@ -6171,6 +6261,14 @@ ALTER TABLE ONLY taxon_changes
 
 
 --
+-- Name: taxon_curators taxon_curators_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY taxon_curators
+    ADD CONSTRAINT taxon_curators_pkey PRIMARY KEY (id);
+
+
+--
 -- Name: taxon_descriptions taxon_descriptions_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -6320,6 +6418,14 @@ ALTER TABLE ONLY wiki_page_versions
 
 ALTER TABLE ONLY wiki_pages
     ADD CONSTRAINT wiki_pages_pkey PRIMARY KEY (id);
+
+
+--
+-- Name: year_statistics year_statistics_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY year_statistics
+    ADD CONSTRAINT year_statistics_pkey PRIMARY KEY (id);
 
 
 --
@@ -6680,6 +6786,13 @@ CREATE INDEX index_flow_task_resources_on_resource_type_and_resource_id ON flow_
 
 
 --
+-- Name: index_flow_tasks_on_unique_hash; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_flow_tasks_on_unique_hash ON flow_tasks USING btree (unique_hash);
+
+
+--
 -- Name: index_flow_tasks_on_user_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -6852,6 +6965,13 @@ CREATE INDEX index_identifications_on_user_id_and_created_at ON identifications 
 --
 
 CREATE INDEX index_identifications_on_user_id_and_current ON identifications USING btree (user_id, current);
+
+
+--
+-- Name: index_identifications_on_user_id_and_observation_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE UNIQUE INDEX index_identifications_on_user_id_and_observation_id ON identifications USING btree (user_id, observation_id) WHERE current;
 
 
 --
@@ -8045,6 +8165,13 @@ CREATE INDEX index_taxon_changes_on_user_id ON taxon_changes USING btree (user_i
 
 
 --
+-- Name: index_taxon_descriptions_on_provider; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_taxon_descriptions_on_provider ON taxon_descriptions USING btree (provider);
+
+
+--
 -- Name: index_taxon_descriptions_on_taxon_id; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -8343,6 +8470,20 @@ CREATE INDEX index_wiki_pages_on_creator_id ON wiki_pages USING btree (creator_i
 --
 
 CREATE UNIQUE INDEX index_wiki_pages_on_path ON wiki_pages USING btree (path);
+
+
+--
+-- Name: index_year_statistics_on_site_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_year_statistics_on_site_id ON year_statistics USING btree (site_id);
+
+
+--
+-- Name: index_year_statistics_on_user_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX index_year_statistics_on_user_id ON year_statistics USING btree (user_id);
 
 
 --
@@ -9065,4 +9206,22 @@ INSERT INTO schema_migrations (version) VALUES ('20170907221848');
 INSERT INTO schema_migrations (version) VALUES ('20170920185103');
 
 INSERT INTO schema_migrations (version) VALUES ('20170923232400');
+
+INSERT INTO schema_migrations (version) VALUES ('20171107200722');
+
+INSERT INTO schema_migrations (version) VALUES ('20171108223540');
+
+INSERT INTO schema_migrations (version) VALUES ('20171218191934');
+
+INSERT INTO schema_migrations (version) VALUES ('20171221220649');
+
+INSERT INTO schema_migrations (version) VALUES ('20171222172131');
+
+INSERT INTO schema_migrations (version) VALUES ('20180103194449');
+
+INSERT INTO schema_migrations (version) VALUES ('20180109232530');
+
+INSERT INTO schema_migrations (version) VALUES ('20180124192906');
+
+INSERT INTO schema_migrations (version) VALUES ('20180126155509');
 

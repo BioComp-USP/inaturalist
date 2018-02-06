@@ -227,7 +227,8 @@ class TaxaController < ApplicationController
   end
 
   def new
-    @taxon = Taxon.new(:name => params[:name])
+    @taxon = Taxon.new( name: params[:name] )
+    @protected_attributes_editable = true
   end
 
   def create
@@ -235,6 +236,7 @@ class TaxaController < ApplicationController
     return unless presave
     @taxon.attributes = params[:taxon]
     @taxon.creator = current_user
+    @taxon.current_user = current_user
     if @taxon.save
       Taxon.refresh_es_index
       flash[:notice] = t(:taxon_was_successfully_created)
@@ -260,6 +262,9 @@ class TaxaController < ApplicationController
       Identification.joins(:taxon).where(@taxon.descendant_conditions).exists?
     @descendants_exist = @taxon.descendants.exists?
     @taxon_range = TaxonRange.without_geom.where(taxon_id: @taxon).first
+    unless @protected_attributes_editable = @taxon.protected_attributes_editable_by?( current_user )
+      flash.now[:notice] ||= "This taxon is complete or descends from a complete taxon, so some taxonomic attributes can only be editable by curators of that complete taxon."
+    end
   end
 
   def update
@@ -1399,6 +1404,7 @@ class TaxaController < ApplicationController
       render_404
       return
     end
+    @taxon.current_user = current_user
   end
   
   def do_external_lookups
@@ -1527,7 +1533,7 @@ class TaxaController < ApplicationController
 
   def taxon_curator_required
     unless @taxon.editable_by?( current_user )
-      flash[:notice] = t(:only_administrators_may_access_that_page)
+      flash[:notice] = t(:you_dont_have_permission_to_edit_that_taxon)
       if session[:return_to] == request.fullpath
         redirect_to root_url
       else
